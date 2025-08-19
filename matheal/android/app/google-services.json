@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1050206498085",
+    "project_id": "matheal-ef41a",
+    "storage_bucket": "matheal-ef41a.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1050206498085:android:041ab1b2b870520822fecc",
+        "android_client_info": {
+          "package_name": "com.example.matheal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyASb2Yr01YALwTNYo0OZgpLSunlXFqTgUk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
