@@ -23,7 +23,7 @@ class _SplashScreenState extends State<SplashScreen>
   void initState() {
     super.initState();
     _animationController = AnimationController(
-      duration: const Duration(seconds: 2),
+      duration: const Duration(seconds: 3),
       vsync: this,
     );
 
@@ -48,7 +48,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    await Future.delayed(const Duration(seconds: 3));
+    await Future.delayed(const Duration(seconds: 5));
     
     final user = FirebaseAuth.instance.currentUser;
     final prefs = await SharedPreferences.getInstance();
@@ -90,11 +90,15 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: Container(
-        decoration: const BoxDecoration(
+        decoration: const BoxDecoration (
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: AppColors.splashGradient,
+            colors:  [
+              Color.fromARGB(255, 255, 255, 255),
+              Color.fromRGBO(255, 255, 255, 1),
+              Color.fromARGB(255, 255, 255, 255),
+            ],
           ),
         ),
         child: Center(
@@ -106,41 +110,56 @@ class _SplashScreenState extends State<SplashScreen>
                 child: ScaleTransition(
                   scale: _scaleAnimation,
                   child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.start, // push content to top
                     children: [
+                      SizedBox(height: MediaQuery.of(context).size.height * 0.12), // 12% from top
                       Container(
-                        width: 120,
-                        height: 120,
-                        decoration: BoxDecoration(
-                          color: Colors.white,
-                          borderRadius: BorderRadius.circular(30),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.1),
-                              blurRadius: 20,
-                              spreadRadius: 5,
+                        width: 225,
+                        height: 225,
+                        decoration: BoxDecoration  (
+                          color: const Color.fromARGB(0, 245, 243, 243),
+                          borderRadius: BorderRadius.circular(30),),
+                        child: Image.asset(
+                            "assets/images/logo.png",  // your splash logo
+                            width: 225,
+                            height: 225,
+                            fit: BoxFit.contain,
+                            ),   
+                      ),
+                      const SizedBox(height: 1),
+                        RichText(
+                            text: TextSpan(
+                              children: [
+                                TextSpan(
+                                  text: "Mat",
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        color: const Color.fromRGBO(59, 170, 243, 1), // pinkish color
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 30,
+                                      ),
+                                ),
+                                TextSpan(
+                                  text: "Heal",
+                                  style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                                        color: Colors.black, // black for Heal
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 30,
+                                      ),
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: const Icon(
-                          Icons.health_and_safety,
-                          size: 60,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Text(
-                        'MatHeal',
-                        style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                          color: AppColors.primary,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        'Maternal Health Care',
-                        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                          color: AppColors.textSecondary,
+                          )
+                          ,
+                    
+                      const SizedBox(height: 50),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 100),
+                        child: Text(
+                          'Your journey begins here \n         care for both \n    mothers and babies',
+                         style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                            color: AppColors.textSecondary,
+                            height: 1.5,
+                          ),
                         ),
                       ),
                     ],

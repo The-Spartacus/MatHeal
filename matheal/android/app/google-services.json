@@ -12,7 +12,12 @@
           "package_name": "com.example.matheal"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "1050206498085-veb8c7dgo83i13c1ftclvldkn87h0hnn.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyASb2Yr01YALwTNYo0OZgpLSunlXFqTgUk"
@@ -20,7 +25,12 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "1050206498085-veb8c7dgo83i13c1ftclvldkn87h0hnn.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
         }
       }
     }
