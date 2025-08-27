@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-//import 'package:firebase_core/firebase_core.dart';/
 import 'package:provider/provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -24,23 +23,22 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  
-await Firebase.initializeApp(
+
+  await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
   await FirebaseAppCheck.instance.activate(
-    webProvider: ReCaptchaV3Provider('vaishnav'), // for web
-    androidProvider: AndroidProvider.debug, // change to safetyNet/PlayIntegrity later
+    androidProvider: AndroidProvider
+        .playIntegrity, // change to safetyNet/PlayIntegrity later
   );
-
 
   // Initialize timezone data
   tz.initializeTimeZones();
-  
+
   // Initialize notifications
   // await NotificationService.init();
-  
+
   runApp(const MatHealApp());
 }
 

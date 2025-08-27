@@ -1,36 +1,26 @@
 {
   "project_info": {
-    "project_number": "1050206498085",
-    "project_id": "matheal-ef41a",
-    "storage_bucket": "matheal-ef41a.firebasestorage.app"
+    "project_number": "757039932455",
+    "project_id": "matheal-4bb3d",
+    "storage_bucket": "matheal-4bb3d.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:1050206498085:android:041ab1b2b870520822fecc",
+        "mobilesdk_app_id": "1:757039932455:android:165703937daf5c1c561a02",
         "android_client_info": {
           "package_name": "com.example.matheal"
         }
       },
-      "oauth_client": [
-        {
-          "client_id": "1050206498085-veb8c7dgo83i13c1ftclvldkn87h0hnn.apps.googleusercontent.com",
-          "client_type": 3
-        }
-      ],
+      "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyASb2Yr01YALwTNYo0OZgpLSunlXFqTgUk"
+          "current_key": "AIzaSyAIsvtg_yH2LRneq2s3SHkZuTk1sNMtn7E"
         }
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": [
-            {
-              "client_id": "1050206498085-veb8c7dgo83i13c1ftclvldkn87h0hnn.apps.googleusercontent.com",
-              "client_type": 3
-            }
-          ]
+          "other_platform_oauth_client": []
         }
       }
     }
