@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "576831472110",
+    "project_id": "matheal-725ed",
+    "storage_bucket": "matheal-725ed.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:576831472110:android:3f52d85c6761e6aeb90eff",
+        "android_client_info": {
+          "package_name": "com.example.matheal"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCRVeTz0e7ofCZSBF1TJxEe-QGz3wx55og"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
