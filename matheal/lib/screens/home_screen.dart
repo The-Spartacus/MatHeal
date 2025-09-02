@@ -14,8 +14,57 @@ import 'features/chat_screen.dart';
 import 'profile/profile_screen.dart';
 import 'settings/settings_screen.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
+
+  @override
+  State<HomeScreen> createState() => _HomeScreenState();
+}
+
+class _HomeScreenState extends State<HomeScreen> {
+  int _selectedIndex = 0;
+
+  // Screens for each bottom nav tab
+  late final List<Widget> _screens = [
+    _buildHomeTab(), // Home tab = original dashboard with feature grid
+    const MedicineRemindersScreen(),
+    const ChatScreen(),
+    const SettingsScreen(),
+  ];
+
+  void _onItemTapped(int index) {
+    setState(() {
+      _selectedIndex = index;
+    });
+  }
+
+  // 👇 Home dashboard tab
+  Widget _buildHomeTab() {
+    return RefreshIndicator(
+      onRefresh: () async {
+        await Future.delayed(const Duration(seconds: 1));
+      },
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            _buildWelcomeCard(),
+            const SizedBox(height: 24),
+            Text(
+              'Your Health Hub',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
+            ),
+            const SizedBox(height: 16),
+            _buildFeatureGrid(context),
+          ],
+        ),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -52,64 +101,58 @@ class HomeScreen extends StatelessWidget {
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
             onPressed: () {
-              // TODO: Show notifications
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text('Notifications feature coming soon')),
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.settings_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const SettingsScreen()),
-              );
-            },
+          IconButton( 
+            icon: const Icon(Icons.account_circle_outlined),
+             onPressed: () { 
+              Navigator.of(context).push( 
+                MaterialPageRoute(builder: (context) => const ProfileScreen()), 
+                ); 
+              }, 
           ),
         ],
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          // TODO: Refresh data
-          await Future.delayed(const Duration(seconds: 1));
-        },
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildWelcomeCard(),
-              const SizedBox(height: 24),
-              Text(
-                'Your Health Hub',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.textPrimary,
-                ),
-              ),
-              const SizedBox(height: 16),
-              _buildFeatureGrid(context),
-            ],
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: Colors.blueAccent,
+        unselectedItemColor: Colors.grey,
+        showUnselectedLabels: true,
+        items: const [
+          BottomNavigationBarItem(
+            icon: Icon(Icons.home_outlined),
+            label: "Home",
           ),
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.of(context).push(
-            MaterialPageRoute(builder: (context) => const ChatScreen()),
-          );
-        },
-        child: const Icon(Icons.chat),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.medication_outlined),
+            label: "Reminders",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.smart_toy_outlined),
+            label: "AI",
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.settings_outlined),
+            label: "Settings",
+          ),
+        ],
       ),
     );
   }
 
+  // --- welcome card
   Widget _buildWelcomeCard() {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
         final user = userProvider.user;
         final profile = userProvider.profile;
-        
+
         return Card(
           elevation: 4,
           shape: RoundedRectangleBorder(
@@ -134,10 +177,10 @@ class HomeScreen extends StatelessWidget {
                     CircleAvatar(
                       radius: 25,
                       backgroundColor: Colors.white.withOpacity(0.2),
-                      backgroundImage: profile?.avatarUrl != null 
-                          ? NetworkImage(profile!.avatarUrl!) 
+                      backgroundImage: profile?.avatarUrl != null
+                          ? NetworkImage(profile!.avatarUrl!)
                           : null,
-                      child: profile?.avatarUrl == null 
+                      child: profile?.avatarUrl == null
                           ? const Icon(Icons.person, color: Colors.white, size: 30)
                           : null,
                     ),
@@ -195,11 +238,6 @@ class HomeScreen extends StatelessWidget {
                       'Complete your profile',
                       style: TextStyle(color: Colors.white, fontSize: 12),
                     ),
-                    style: TextButton.styleFrom(
-                      padding: EdgeInsets.zero,
-                      minimumSize: Size.zero,
-                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                    ),
                   ),
                 ],
               ],
@@ -210,6 +248,7 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  // --- feature grid
   Widget _buildFeatureGrid(BuildContext context) {
     final features = [
       FeatureCard(
@@ -299,7 +338,7 @@ class HomeScreen extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: 2,
-        childAspectRatio: 1.1,
+        childAspectRatio: 0.9,
         crossAxisSpacing: 16,
         mainAxisSpacing: 16,
       ),
