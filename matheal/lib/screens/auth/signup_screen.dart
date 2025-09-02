@@ -125,18 +125,18 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: Column(
                   children: [
                     Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
+                        width: 225,
+                        height: 225,
+                        decoration: BoxDecoration  (
+                          color: const Color.fromARGB(0, 245, 243, 243),
+                          borderRadius: BorderRadius.circular(30),),
+                        child: Image.asset(
+                            "assets/images/logo.png",  // your splash logo
+                            width: 225,
+                            height: 225,
+                            fit: BoxFit.contain,
+                            ),   
                       ),
-                      child: const Icon(
-                        Icons.person_add,
-                        size: 40,
-                        color: Colors.white,
-                      ),
-                    ),
                     const SizedBox(height: 16),
                     Text(
                       'Create Account',

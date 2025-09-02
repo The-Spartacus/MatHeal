@@ -30,7 +30,7 @@ void main() async {
 
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider
-        .playIntegrity, // change to safetyNet/PlayIntegrity later
+        .debug, // change to safetyNet/PlayIntegrity later
   );
 
   // Initialize timezone data

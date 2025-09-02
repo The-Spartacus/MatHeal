@@ -87,28 +87,28 @@ class _LoginScreenState extends State<LoginScreen> {
       backgroundColor: AppColors.background,
       body: SafeArea(
         child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+          padding: const EdgeInsets.all(25.0),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const SizedBox(height: 40),
+              const SizedBox(height: 20),
               Center(
                 child: Column(
                   children: [
                     Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary,
-                        borderRadius: BorderRadius.circular(20),
+                        width: 150,
+                        height: 150,
+                        decoration: BoxDecoration  (
+                          color: const Color.fromARGB(0, 245, 243, 243),
+                          borderRadius: BorderRadius.circular(30),),
+                        child: Image.asset(
+                            "assets/images/logo.png",  // your splash logo
+                            width: 150,
+                            height: 150,
+                            fit: BoxFit.contain,
+                            ),   
                       ),
-                      child: const Icon(
-                        Icons.health_and_safety,
-                        size: 40,
-                        color: Colors.white,
-                      ),
-                    ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 10),
                     Text(
                       'Welcome Back',
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
@@ -117,16 +117,16 @@ class _LoginScreenState extends State<LoginScreen> {
                       ),
                     ),
                     const SizedBox(height: 8),
-                    Text(
-                      'Sign in to continue your health journey',
+                    /*Text(
+                      'Sign in to continue your health\n journey',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.textSecondary,
                       ),
-                    ),
+                    ),*/
                   ],
                 ),
               ),
-              const SizedBox(height: 48),
+              const SizedBox(height: 20),
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -222,7 +222,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -251,7 +251,7 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 25),
               const Center(
                 child: Text(
                   'Social login coming soon',

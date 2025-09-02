@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 class AppColors {
   static const Color primary =  Color.fromRGBO(59, 170, 243, 1); // Health green
-  static const Color accent = Color(0xFFFFC107); // Warm yellow
+  static const Color accent = Color(0xFFE91E63); // Warm yellow
   static const Color background = Color(0xFFFDFDFD);
   static const Color surface = Colors.white;
   static const Color error = Color(0xFFE57373);
