@@ -1,122 +1,107 @@
 // lib/services/notification_service.dart
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:timezone/timezone.dart' as tz;
 import 'dart:io';
+import 'package:flutter/foundation.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
+import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/timezone.dart' as tz;
 
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
+  static late tz.Location _local;
 
-  static Future<void> init() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
+  /// Initializes the notification service and sets the local timezone.
+  /// MUST be called from main.dart at startup.
+  static Future<void> init(String s, {required String timeZoneName}) async {
+    try {
+      debugPrint("[NotificationService] Initializing timezone database...");
+      tz.initializeTimeZones();
+      _local = tz.getLocation(timeZoneName);
+      tz.setLocalLocation(_local);
+      debugPrint("[NotificationService] Timezone set to: ${tz.local.name}");
 
-    const DarwinInitializationSettings initializationSettingsIOS =
-        DarwinInitializationSettings(
-      requestSoundPermission: true,
-      requestBadgePermission: true,
-      requestAlertPermission: true,
-    );
+      const AndroidInitializationSettings initializationSettingsAndroid =
+          AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsIOS,
-    );
+      const DarwinInitializationSettings initializationSettingsIOS =
+          DarwinInitializationSettings(requestAlertPermission: true);
 
-    await _notifications.initialize(initializationSettings);
+      const InitializationSettings initializationSettings =
+          InitializationSettings(
+              android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
 
-    if (Platform.isAndroid) {
-      await _notifications
-          .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestPermissions(); // Use requestPermissions() for broader compatibility
+      await _notifications.initialize(initializationSettings);
+
+      if (Platform.isAndroid) {
+        final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
+            _notifications.resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin>();
+        if (androidImplementation != null) {
+          await androidImplementation.requestNotificationsPermission();
+          await androidImplementation.requestExactAlarmsPermission();
+        }
+      }
+      debugPrint("[NotificationService] INIT COMPLETE.");
+    } catch (e) {
+      debugPrint("[NotificationService] FATAL ERROR during init: $e");
     }
   }
 
-  static Future<void> showNotification({
-    required int id,
-    required String title,
-    required String body,
-  }) async {
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'matheal_channel',
-        'MatHeal Notifications',
-        channelDescription: 'Notifications for MatHeal app',
-        importance: Importance.high,
-        priority: Priority.high,
-      ),
-      iOS: DarwinNotificationDetails(),
-    );
-
-    await _notifications.show(
-      id,
-      title,
-      body,
-      notificationDetails,
-    );
-  }
-
+  /// Schedules a notification.
   static Future<void> scheduleNotification({
     required int id,
     required String title,
     required String body,
     required DateTime scheduledDate,
-    String repeatInterval = 'none', // ✅ Add optional parameter for repeating
+    String repeatInterval = 'none',
   }) async {
-    const NotificationDetails notificationDetails = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'matheal_reminders',
-        'MatHeal Reminders',
-        channelDescription: 'Reminder notifications for MatHeal',
-        importance: Importance.high,
-        priority: Priority.high,
-      ),
-      iOS: DarwinNotificationDetails(),
-    );
+    try {
+      // Create a TZDateTime object using the explicitly set local timezone
+      final tz.TZDateTime scheduledTZDate =
+          tz.TZDateTime.from(scheduledDate, _local);
 
-    // ✅ Logic to determine the repetition schedule
-    DateTimeComponents? dateTimeComponents;
-    switch (repeatInterval) {
-      case 'daily':
-        // Repeats every day at the specified time
-        dateTimeComponents = DateTimeComponents.time;
-        break;
-      case 'weekly':
-        // Repeats every week on the same day and at the same time
-        dateTimeComponents = DateTimeComponents.dayOfWeekAndTime;
-        break;
-      case 'none':
-      default:
-        // Does not repeat
-        dateTimeComponents = null;
-        break;
+      debugPrint(
+          "[NotificationService] Scheduling notification with parameters:");
+      debugPrint("  ID: $id");
+      debugPrint("  Title: $title");
+      debugPrint("  Scheduled Date (in ${_local.name}): $scheduledTZDate");
+      debugPrint("  Repeat Interval: $repeatInterval");
+
+      const NotificationDetails notificationDetails = NotificationDetails(
+        android: AndroidNotificationDetails(
+          'matheal_reminders_channel', 'MatHeal Reminders',
+          channelDescription: 'Channel for medicine and appointment reminders.',
+          importance: Importance.max,
+          priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(presentSound: true),
+      );
+
+      DateTimeComponents? matchDateTimeComponents;
+      if (repeatInterval == 'daily') {
+        matchDateTimeComponents = DateTimeComponents.time;
+      } else if (repeatInterval == 'weekly') {
+        matchDateTimeComponents = DateTimeComponents.dayOfWeekAndTime;
+      }
+
+      await _notifications.zonedSchedule(
+        id, title, body, scheduledTZDate,
+        notificationDetails,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        matchDateTimeComponents: matchDateTimeComponents,
+      );
+
+      debugPrint("[NotificationService] SUCCESSFULLY SCHEDULED for $scheduledTZDate.");
+    } catch (e) {
+      debugPrint(
+          "[NotificationService] FATAL ERROR during scheduleNotification: $e");
     }
-
-    await _notifications.zonedSchedule(
-      id,
-      title,
-      body,
-      tz.TZDateTime.from(scheduledDate, tz.local),
-      notificationDetails,
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      // ✅ This is the key change to enable repeating alarms
-      matchDateTimeComponents: dateTimeComponents,
-    );
   }
 
   static Future<void> cancelNotification(int id) async {
     await _notifications.cancel(id);
   }
-
-  static Future<void> cancelAllNotifications() async {
-    await _notifications.cancelAll();
-  }
 }
 
-extension on AndroidFlutterLocalNotificationsPlugin? {
-  Future<void> requestPermissions() async {}
-}

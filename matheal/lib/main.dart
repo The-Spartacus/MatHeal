@@ -41,7 +41,7 @@ void main() async {
   tz.initializeTimeZones();
 
   // Initialize notifications
-  await NotificationService.init();
+  await NotificationService.init('Asia/Kolkata', timeZoneName: 'Asia/Kolkata');
 
   runApp(const MatHealApp());
 }
@@ -59,9 +59,6 @@ class MatHealApp extends StatelessWidget {
         ),
         Provider<FirestoreService>(
           create: (_) => FirestoreService(),
-        ),
-        Provider<NotificationService>(
-          create: (_) => NotificationService(),
         ),
         Provider<ChatService>(
           create: (_) => ChatService(),

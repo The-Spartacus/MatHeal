@@ -3,6 +3,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
+import 'package:timezone/timezone.dart' as tz;
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../providers/user_provider.dart';
@@ -294,9 +295,11 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
         ? TimeOfDay.fromDateTime(reminder.time)
         : TimeOfDay.now();
     String selectedRepeat = reminder?.repeatInterval ?? 'daily';
+    bool isSaving = false;
 
     showDialog(
       context: context,
+      barrierDismissible: !isSaving,
       builder: (context) => StatefulBuilder(
         builder: (context, setDialogState) => AlertDialog(
           title: Text(isEditing ? 'Edit Reminder' : 'Add Medicine Reminder'),
@@ -310,6 +313,7 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                     labelText: 'Medicine Name',
                     prefixIcon: Icon(Icons.medication),
                   ),
+                  enabled: !isSaving,
                 ),
                 const SizedBox(height: 16),
                 TextFormField(
@@ -319,13 +323,14 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                     prefixIcon: Icon(Icons.note),
                   ),
                   maxLines: 2,
+                  enabled: !isSaving,
                 ),
                 const SizedBox(height: 16),
                 ListTile(
                   leading: const Icon(Icons.access_time),
                   title: const Text('Time'),
                   subtitle: Text(selectedTime.format(context)),
-                  onTap: () async {
+                  onTap: isSaving ? null : () async {
                     final time = await showTimePicker(
                       context: context,
                       initialTime: selectedTime,
@@ -347,7 +352,7 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                     DropdownMenuItem(value: 'daily', child: Text('Daily')),
                     DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
                   ],
-                  onChanged: (value) {
+                  onChanged: isSaving ? null : (value) {
                     setDialogState(() => selectedRepeat = value ?? 'daily');
                   },
                 ),
@@ -356,30 +361,43 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
           ),
           actions: [
             TextButton(
-              onPressed: () => Navigator.of(context).pop(),
+              onPressed: isSaving ? null : () => Navigator.of(context).pop(),
               child: const Text('Cancel'),
             ),
             ElevatedButton(
-              onPressed: () async {
+              onPressed: isSaving ? null : () async {
+                setDialogState(() => isSaving = true);
+
                 if (titleController.text.trim().isEmpty) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Please enter medicine name')),
                   );
+                  setDialogState(() => isSaving = false);
                   return;
                 }
 
-                final now = DateTime.now();
-                var reminderTime = DateTime(
-                  now.year,
-                  now.month,
-                  now.day,
+                // ✅ FINAL FIX: Use timezone-aware comparison
+                final tz.TZDateTime nowInLocalTZ = tz.TZDateTime.now(tz.local);
+                
+                tz.TZDateTime scheduledTimeInLocalTZ = tz.TZDateTime(
+                  tz.local,
+                  nowInLocalTZ.year,
+                  nowInLocalTZ.month,
+                  nowInLocalTZ.day,
                   selectedTime.hour,
                   selectedTime.minute,
                 );
 
-                if (reminderTime.isBefore(now)) {
-                  reminderTime = reminderTime.add(const Duration(days: 1));
+                if (scheduledTimeInLocalTZ.isBefore(nowInLocalTZ)) {
+                   debugPrint("[MedicineScreen] Scheduled time is in the past. Adjusting...");
+                  if (selectedRepeat == 'weekly') {
+                    scheduledTimeInLocalTZ = scheduledTimeInLocalTZ.add(const Duration(days: 7));
+                  } else {
+                    scheduledTimeInLocalTZ = scheduledTimeInLocalTZ.add(const Duration(days: 1));
+                  }
                 }
+
+                final finalScheduleTime = DateTime.fromMillisecondsSinceEpoch(scheduledTimeInLocalTZ.millisecondsSinceEpoch);
 
                 final reminderModel = ReminderModel(
                   id: reminder?.id,
@@ -387,36 +405,29 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                   type: 'medicine',
                   title: titleController.text.trim(),
                   notes: notesController.text.trim(),
-                  time: reminderTime,
+                  time: finalScheduleTime, // Store as plain DateTime
                   repeatInterval: selectedRepeat,
                 );
 
                 try {
                   final firestoreService = context.read<FirestoreService>();
+                  String docId;
 
                   if (isEditing) {
-                    await firestoreService.updateReminder(
-                        reminder.id!, reminderModel);
-                    await NotificationService.cancelNotification(
-                        reminder.id.hashCode);
-                    await NotificationService.scheduleNotification(
-                      id: reminder.id.hashCode,
-                      title: 'Medicine Reminder',
-                      body: 'Time to take ${titleController.text.trim()}',
-                      scheduledDate: reminderTime,
-                      repeatInterval: selectedRepeat, // ✅ Pass repeat interval
-                    );
+                    docId = reminder!.id!;
+                    await firestoreService.updateReminder(docId, reminderModel);
+                    await NotificationService.cancelNotification(docId.hashCode);
                   } else {
-                    final id =
-                        await firestoreService.addReminder(reminderModel);
-                    await NotificationService.scheduleNotification(
-                      id: id.hashCode,
-                      title: 'Medicine Reminder',
-                      body: 'Time to take ${titleController.text.trim()}',
-                      scheduledDate: reminderTime,
-                      repeatInterval: selectedRepeat, // ✅ Pass repeat interval
-                    );
+                    docId = await firestoreService.addReminder(reminderModel);
                   }
+                  
+                  await NotificationService.scheduleNotification(
+                    id: docId.hashCode,
+                    title: 'Medicine Reminder',
+                    body: 'Time to take ${titleController.text.trim()}',
+                    scheduledDate: finalScheduleTime,
+                    repeatInterval: selectedRepeat,
+                  );
 
                   HapticFeedback.lightImpact();
                   Navigator.of(context).pop();
@@ -430,15 +441,26 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                     ),
                   );
                 } catch (e) {
+                  debugPrint("[MedicineScreen] FATAL ERROR during save/schedule: $e");
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
                       content: Text('Error: $e'),
                       backgroundColor: AppColors.error,
                     ),
                   );
+                  setDialogState(() => isSaving = false);
                 }
               },
-              child: Text(isEditing ? 'Update' : 'Add'),
+              child: isSaving
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        color: Colors.white,
+                        strokeWidth: 2,
+                      ),
+                    )
+                  : Text(isEditing ? 'Update' : 'Add'),
             ),
           ],
         ),
@@ -543,3 +565,4 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
     );
   }
 }
+
