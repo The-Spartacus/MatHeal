@@ -3,14 +3,41 @@
 
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../providers/theme_provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/auth_service.dart';
 import '../../utils/theme.dart';
 import '../auth/login_screen.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
+
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  bool _notificationsEnabled = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
+    });
+  }
+
+  Future<void> _saveNotificationPreference(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notificationsEnabled', value);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,7 +85,8 @@ class SettingsScreen extends StatelessWidget {
                 fontWeight: FontWeight.bold,
               ),
             ),
-            const SizedBox(height: 16),
+            const Divider(),
+            const SizedBox(height: 8),
             ...children,
           ],
         ),
@@ -87,9 +115,10 @@ class SettingsScreen extends StatelessWidget {
     return SwitchListTile(
       title: const Text('Notifications'),
       subtitle: const Text('Receive health reminders and updates'),
-      value: true, // TODO: Implement notification preferences
+      value: _notificationsEnabled,
       onChanged: (value) {
-        // TODO: Handle notification toggle
+        setState(() => _notificationsEnabled = value);
+        _saveNotificationPreference(value);
       },
       secondary: const Icon(
         Icons.notifications,
@@ -104,7 +133,6 @@ class SettingsScreen extends StatelessWidget {
       title: const Text('Language'),
       subtitle: const Text('English (Coming Soon)'),
       onTap: () {
-        // TODO: Implement language selection
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Language selection coming soon'),
@@ -134,7 +162,9 @@ class SettingsScreen extends StatelessWidget {
               ),
               ElevatedButton(
                 onPressed: () => Navigator.of(context).pop(true),
-                style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                ),
                 child: const Text('Logout'),
               ),
             ],
@@ -144,7 +174,7 @@ class SettingsScreen extends StatelessWidget {
         if (shouldLogout == true && context.mounted) {
           await context.read<AuthService>().signOut();
           context.read<UserProvider>().clear();
-          
+
           Navigator.of(context).pushAndRemoveUntil(
             MaterialPageRoute(builder: (context) => const LoginScreen()),
             (route) => false,

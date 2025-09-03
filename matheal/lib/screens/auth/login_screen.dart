@@ -8,6 +8,7 @@ import '../../providers/user_provider.dart';
 import '../../utils/theme.dart';
 import '../home_screen.dart';
 import 'signup_screen.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -52,6 +53,10 @@ class _LoginScreenState extends State<LoginScreen> {
         
         userProvider.setUser(user);
         userProvider.setProfile(profile);
+
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+
 
         if (mounted) {
           HapticFeedback.lightImpact();

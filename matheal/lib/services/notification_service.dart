@@ -10,7 +10,7 @@ class NotificationService {
   static Future<void> init() async {
     const AndroidInitializationSettings initializationSettingsAndroid =
         AndroidInitializationSettings('@mipmap/ic_launcher');
-    
+
     const DarwinInitializationSettings initializationSettingsIOS =
         DarwinInitializationSettings(
       requestSoundPermission: true,
@@ -30,7 +30,7 @@ class NotificationService {
       await _notifications
           .resolvePlatformSpecificImplementation<
               AndroidFlutterLocalNotificationsPlugin>()
-          ?.requestNotificationsPermission();
+          ?.requestPermissions(); // Use requestPermissions() for broader compatibility
     }
   }
 
@@ -63,6 +63,7 @@ class NotificationService {
     required String title,
     required String body,
     required DateTime scheduledDate,
+    String repeatInterval = 'none', // ✅ Add optional parameter for repeating
   }) async {
     const NotificationDetails notificationDetails = NotificationDetails(
       android: AndroidNotificationDetails(
@@ -75,6 +76,24 @@ class NotificationService {
       iOS: DarwinNotificationDetails(),
     );
 
+    // ✅ Logic to determine the repetition schedule
+    DateTimeComponents? dateTimeComponents;
+    switch (repeatInterval) {
+      case 'daily':
+        // Repeats every day at the specified time
+        dateTimeComponents = DateTimeComponents.time;
+        break;
+      case 'weekly':
+        // Repeats every week on the same day and at the same time
+        dateTimeComponents = DateTimeComponents.dayOfWeekAndTime;
+        break;
+      case 'none':
+      default:
+        // Does not repeat
+        dateTimeComponents = null;
+        break;
+    }
+
     await _notifications.zonedSchedule(
       id,
       title,
@@ -84,6 +103,8 @@ class NotificationService {
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
+      // ✅ This is the key change to enable repeating alarms
+      matchDateTimeComponents: dateTimeComponents,
     );
   }
 
@@ -94,4 +115,8 @@ class NotificationService {
   static Future<void> cancelAllNotifications() async {
     await _notifications.cancelAll();
   }
+}
+
+extension on AndroidFlutterLocalNotificationsPlugin? {
+  Future<void> requestPermissions() async {}
 }

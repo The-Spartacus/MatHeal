@@ -13,7 +13,8 @@ class MedicineRemindersScreen extends StatefulWidget {
   const MedicineRemindersScreen({super.key});
 
   @override
-  State<MedicineRemindersScreen> createState() => _MedicineRemindersScreenState();
+  State<MedicineRemindersScreen> createState() =>
+      _MedicineRemindersScreenState();
 }
 
 class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
@@ -61,7 +62,8 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
             );
           }
 
-          final reminders = snapshot.data?.where((r) => r.type == 'medicine').toList() ?? [];
+          final reminders =
+              snapshot.data?.where((r) => r.type == 'medicine').toList() ?? [];
 
           if (reminders.isEmpty) {
             return _buildEmptyState();
@@ -112,17 +114,17 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
             Text(
               'No Medicine Reminders',
               style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.textPrimary,
+                  ),
             ),
             const SizedBox(height: 8),
             Text(
               'Add your first medicine reminder to stay on track with your medications.',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                color: AppColors.textSecondary,
-              ),
+                    color: AppColors.textSecondary,
+                  ),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
@@ -201,7 +203,8 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                         if (reminder.repeatInterval != 'none') ...[
                           const SizedBox(width: 12),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
                             decoration: BoxDecoration(
                               color: AppColors.accent.withOpacity(0.2),
                               borderRadius: BorderRadius.circular(10),
@@ -248,7 +251,8 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                       children: [
                         Icon(Icons.delete, size: 20, color: AppColors.error),
                         SizedBox(width: 8),
-                        Text('Delete', style: TextStyle(color: AppColors.error)),
+                        Text('Delete',
+                            style: TextStyle(color: AppColors.error)),
                       ],
                     ),
                   ),
@@ -286,7 +290,7 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
     final isEditing = reminder != null;
     final titleController = TextEditingController(text: reminder?.title ?? '');
     final notesController = TextEditingController(text: reminder?.notes ?? '');
-    TimeOfDay selectedTime = reminder != null 
+    TimeOfDay selectedTime = reminder != null
         ? TimeOfDay.fromDateTime(reminder.time)
         : TimeOfDay.now();
     String selectedRepeat = reminder?.repeatInterval ?? 'daily';
@@ -365,13 +369,17 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                 }
 
                 final now = DateTime.now();
-                final reminderTime = DateTime(
+                var reminderTime = DateTime(
                   now.year,
                   now.month,
                   now.day,
                   selectedTime.hour,
                   selectedTime.minute,
                 );
+
+                if (reminderTime.isBefore(now)) {
+                  reminderTime = reminderTime.add(const Duration(days: 1));
+                }
 
                 final reminderModel = ReminderModel(
                   id: reminder?.id,
@@ -385,28 +393,38 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
 
                 try {
                   final firestoreService = context.read<FirestoreService>();
-                  
+
                   if (isEditing) {
-                    await firestoreService.updateReminder(reminder.id!, reminderModel);
+                    await firestoreService.updateReminder(
+                        reminder.id!, reminderModel);
+                    await NotificationService.cancelNotification(
+                        reminder.id.hashCode);
+                    await NotificationService.scheduleNotification(
+                      id: reminder.id.hashCode,
+                      title: 'Medicine Reminder',
+                      body: 'Time to take ${titleController.text.trim()}',
+                      scheduledDate: reminderTime,
+                      repeatInterval: selectedRepeat, // ✅ Pass repeat interval
+                    );
                   } else {
-                    final id = await firestoreService.addReminder(reminderModel);
-                    
-                    // Schedule notification
+                    final id =
+                        await firestoreService.addReminder(reminderModel);
                     await NotificationService.scheduleNotification(
                       id: id.hashCode,
                       title: 'Medicine Reminder',
                       body: 'Time to take ${titleController.text.trim()}',
                       scheduledDate: reminderTime,
+                      repeatInterval: selectedRepeat, // ✅ Pass repeat interval
                     );
                   }
 
                   HapticFeedback.lightImpact();
                   Navigator.of(context).pop();
-                  
+
                   ScaffoldMessenger.of(context).showSnackBar(
                     SnackBar(
-                      content: Text(isEditing 
-                          ? 'Reminder updated successfully' 
+                      content: Text(isEditing
+                          ? 'Reminder updated successfully'
                           : 'Reminder added successfully'),
                       backgroundColor: AppColors.success,
                     ),
@@ -449,11 +467,13 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                   consumedAt: DateTime.now(),
                 );
 
-                await context.read<FirestoreService>().addConsumedMedicine(consumedMedicine);
-                
+                await context
+                    .read<FirestoreService>()
+                    .addConsumedMedicine(consumedMedicine);
+
                 HapticFeedback.lightImpact();
                 Navigator.of(context).pop();
-                
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Medicine marked as taken'),
@@ -490,14 +510,16 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
           ElevatedButton(
             onPressed: () async {
               try {
-                await context.read<FirestoreService>().deleteReminder(reminder.id!);
-                
-                // Cancel notification
-                await NotificationService.cancelNotification(reminder.id.hashCode);
-                
+                await context
+                    .read<FirestoreService>()
+                    .deleteReminder(reminder.id!);
+
+                await NotificationService.cancelNotification(
+                    reminder.id.hashCode);
+
                 HapticFeedback.lightImpact();
                 Navigator.of(context).pop();
-                
+
                 ScaffoldMessenger.of(context).showSnackBar(
                   const SnackBar(
                     content: Text('Reminder deleted'),

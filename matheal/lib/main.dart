@@ -17,6 +17,10 @@ import 'providers/theme_provider.dart';
 import 'providers/user_provider.dart';
 import 'screens/splash_screen.dart';
 import 'utils/theme.dart';
+import 'screens/auth/login_screen.dart'; // ✅ your login screen
+import 'package:firebase_auth/firebase_auth.dart'; // <-- add this
+
+
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
@@ -37,13 +41,14 @@ void main() async {
   tz.initializeTimeZones();
 
   // Initialize notifications
-  // await NotificationService.init();
+  await NotificationService.init();
 
   runApp(const MatHealApp());
 }
 
 class MatHealApp extends StatelessWidget {
   const MatHealApp({super.key});
+  
 
   @override
   Widget build(BuildContext context) {
@@ -76,7 +81,18 @@ class MatHealApp extends StatelessWidget {
             theme: AppTheme.lightTheme,
             darkTheme: AppTheme.darkTheme,
             themeMode: themeProvider.themeMode,
-            home: const SplashScreen(),
+            home: StreamBuilder<User?>(
+              stream: FirebaseAuth.instance.authStateChanges(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const SplashScreen(); // still loading
+                } else if (snapshot.hasData) {
+                  return const SplashScreen(); // user logged in
+                } else {
+                  return const LoginScreen(); // user logged out
+                }
+              },
+            ),
           );
         },
       ),

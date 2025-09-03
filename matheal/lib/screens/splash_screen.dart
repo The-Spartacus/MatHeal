@@ -1,10 +1,15 @@
 // lib/screens/splash_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/theme.dart';
 import 'onboarding_screen.dart';
 import 'home_screen.dart';
+import 'package:provider/provider.dart';
+import '../services/auth_service.dart';
+import '../services/firestore_service.dart';
+import '../providers/user_provider.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -47,22 +52,51 @@ class _SplashScreenState extends State<SplashScreen>
     _checkAuthAndNavigate();
   }
 
-  Future<void> _checkAuthAndNavigate() async {
-    await Future.delayed(const Duration(seconds: 5));
-    
-    final user = FirebaseAuth.instance.currentUser;
-    final prefs = await SharedPreferences.getInstance();
-    final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
 
-    if (!mounted) return;
+Future<void> _checkAuthAndNavigate() async {
+  // A shorter delay is better for user experience
+  await Future.delayed(const Duration(seconds: 3)); 
 
-    if (user != null) {
+  if (!mounted) return;
+
+  final firebaseUser = FirebaseAuth.instance.currentUser;
+  final prefs = await SharedPreferences.getInstance();
+  final hasSeenOnboarding = prefs.getBool('hasSeenOnboarding') ?? false;
+
+  if (firebaseUser != null) {
+    // ✅ USER IS LOGGED IN - FETCH THEIR DATA
+    try {
+      final firestoreService = context.read<FirestoreService>();
+      final userProvider = context.read<UserProvider>();
+
+      // Fetch the user model and profile from Firestore
+      final userModel = await firestoreService.getUser(firebaseUser.uid);
+      final userProfile = await firestoreService.getProfile(firebaseUser.uid);
+
+      // Populate the provider with the fetched data
+      userProvider.setUser(userModel);
+      userProvider.setProfile(userProfile);
+      
+      if (mounted) {
+        // Now navigate to the home screen
+        Navigator.of(context).pushReplacement(
+          _createRoute(const HomeScreen()),
+        );
+      }
+    } catch (e) {
+      // If there's an error (e.g., user deleted in Firestore), sign out and go to login
+      if (mounted) {
+        await context.read<AuthService>().signOut();
+        Navigator.of(context).pushReplacement(
+          _createRoute(const LoginScreen()),
+        );
+      }
+    }
+  } else {
+    // ❌ USER IS NOT LOGGED IN
+    if (hasSeenOnboarding) {
       Navigator.of(context).pushReplacement(
-        _createRoute(const HomeScreen()),
-      );
-    } else if (hasSeenOnboarding) {
-      Navigator.of(context).pushReplacement(
-        _createRoute(const OnboardingScreen()),
+        _createRoute(const LoginScreen()),
       );
     } else {
       Navigator.of(context).pushReplacement(
@@ -70,6 +104,7 @@ class _SplashScreenState extends State<SplashScreen>
       );
     }
   }
+}
 
   PageRouteBuilder _createRoute(Widget page) {
     return PageRouteBuilder(

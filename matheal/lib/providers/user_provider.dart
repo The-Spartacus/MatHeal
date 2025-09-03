@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import '../models/user_model.dart';
 
+
 class UserProvider extends ChangeNotifier {
   UserModel? _user;
   UserProfile? _profile;
@@ -37,4 +38,6 @@ class UserProvider extends ChangeNotifier {
     _isLoading = false;
     notifyListeners();
   }
+
+  Future<void> loadUserFromFirebase() async {}
 }
