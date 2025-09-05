@@ -12,7 +12,9 @@ class NotificationService {
 
   /// Initializes the notification service and sets the local timezone.
   /// MUST be called from main.dart at startup.
-  static Future<void> init(String s, {required String timeZoneName}) async {
+  static Future<void> init(String s, {required String timeZoneName
+  ,    required Function(NotificationResponse) onDidReceiveNotificationResponse,
+}) async {
     try {
       debugPrint("[NotificationService] Initializing timezone database...");
       tz.initializeTimeZones();
@@ -30,7 +32,10 @@ class NotificationService {
           InitializationSettings(
               android: initializationSettingsAndroid, iOS: initializationSettingsIOS);
 
-      await _notifications.initialize(initializationSettings);
+            await _notifications.initialize(
+        initializationSettings,
+        onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
+      );
 
       if (Platform.isAndroid) {
         final AndroidFlutterLocalNotificationsPlugin? androidImplementation =
@@ -67,12 +72,18 @@ class NotificationService {
       debugPrint("  Scheduled Date (in ${_local.name}): $scheduledTZDate");
       debugPrint("  Repeat Interval: $repeatInterval");
 
+
+  
       const NotificationDetails notificationDetails = NotificationDetails(
         android: AndroidNotificationDetails(
-          'matheal_reminders_channel', 'MatHeal Reminders',
-          channelDescription: 'Channel for medicine and appointment reminders.',
+          'matheal_reminders_channel_alarm', 'MatHeal Alarms',
+          channelDescription: 'Channel for medicine and appointment alarm.',
           importance: Importance.max,
           priority: Priority.high,
+
+          fullScreenIntent: true,
+          category: AndroidNotificationCategory.alarm,
+
         ),
         iOS: DarwinNotificationDetails(presentSound: true),
       );
@@ -87,6 +98,7 @@ class NotificationService {
       await _notifications.zonedSchedule(
         id, title, body, scheduledTZDate,
         notificationDetails,
+        payload: 'alarm',
         androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
         uiLocalNotificationDateInterpretation:
             UILocalNotificationDateInterpretation.absoluteTime,

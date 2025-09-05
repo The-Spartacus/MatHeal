@@ -11,7 +11,6 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-    intl: ^0.18.1 # Or the latest version
 
   # UI & Icons
   cupertino_icons: ^1.0.6
@@ -37,9 +36,14 @@ dependencies:
   # Notifications & Local Storage
   flutter_local_notifications: ^18.0.1
   timezone: ^0.9.4
+  intl: ^0.18.1 # Or the latest version
+  just_audio: ^0.9.36 # Or the latest version
+
   
   # Media & Auth
   image_picker: ^0.8.7
+  url_launcher: ^6.3.0
+
   local_auth: ^2.1.5
   
   # Network
@@ -57,3 +61,8 @@ flutter:
     - assets/
     - assets/images/
     - assets/icons/
+    - assets/audio/
+    - assets/onboarding/onboarding1.png
+    - assets/onboarding/onboarding2.png
+    - assets/onboarding/onboarding3.png
+    - assets/onboarding/onboarding4.png

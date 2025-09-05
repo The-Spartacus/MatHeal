@@ -414,7 +414,7 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                   String docId;
 
                   if (isEditing) {
-                    docId = reminder!.id!;
+                    docId = reminder.id!;
                     await firestoreService.updateReminder(docId, reminderModel);
                     await NotificationService.cancelNotification(docId.hashCode);
                   } else {

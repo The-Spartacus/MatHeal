@@ -16,14 +16,16 @@ import 'services/chat_service.dart';
 import 'providers/theme_provider.dart';
 import 'providers/user_provider.dart';
 import 'screens/splash_screen.dart';
+import 'screens/alarm_screen.dart'; // <-- add this import
 import 'utils/theme.dart';
-import 'screens/auth/login_screen.dart'; // ✅ your login screen
 import 'package:firebase_auth/firebase_auth.dart'; // <-- add this
 
 
 
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
     FlutterLocalNotificationsPlugin();
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -41,10 +43,21 @@ void main() async {
   tz.initializeTimeZones();
 
   // Initialize notifications
-  await NotificationService.init('Asia/Kolkata', timeZoneName: 'Asia/Kolkata');
+  await NotificationService.init('Asia/Kolkata', timeZoneName: 'Asia/Kolkata',
+   onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
+  );
+
+  
 
   runApp(const MatHealApp());
 }
+void onDidReceiveNotificationResponse(NotificationResponse notificationResponse) {
+  if (notificationResponse.payload == 'alarm') {
+    // Use the navigatorKey to push the AlarmScreen
+    navigatorKey.currentState?.pushNamed('/alarm');
+  }
+}
+
 
 class MatHealApp extends StatelessWidget {
   const MatHealApp({super.key});
@@ -73,6 +86,7 @@ class MatHealApp extends StatelessWidget {
       child: Consumer<ThemeProvider>(
         builder: (context, themeProvider, child) {
           return MaterialApp(
+            navigatorKey: navigatorKey,
             title: 'MatHeal',
             debugShowCheckedModeBanner: false,
             theme: AppTheme.lightTheme,
@@ -86,10 +100,13 @@ class MatHealApp extends StatelessWidget {
                 } else if (snapshot.hasData) {
                   return const SplashScreen(); // user logged in
                 } else {
-                  return const LoginScreen(); // user logged out
+                  return const SplashScreen(); // user logged out
                 }
               },
             ),
+                  routes: {
+        '/alarm': (context) => const AlarmScreen(),
+      },
           );
         },
       ),

@@ -70,33 +70,47 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: Row(
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: BoxDecoration(
-                color: AppColors.primary,
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                Icons.health_and_safety,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-            const SizedBox(width: 12),
-            const Text(
-              'MatHeal',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                color: AppColors.textPrimary,
-              ),
-            ),
-          ],
-        ),
         backgroundColor: AppColors.background,
         elevation: 0,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: const Color.fromARGB(14, 59, 169, 243),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: Image.asset(
+              "assets/images/logo.png",
+              width: 25,
+              height: 25,
+            ),
+          ),
+        ),
+        centerTitle: true, // 👈 keeps the text in center
+        title: RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: "Mat",
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: const Color.fromRGBO(59, 170, 243, 1),
+                      fontWeight: FontWeight.bold,
+                      fontSize: 30,
+                    ),
+              ),
+              TextSpan(
+                text: "Heal",
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 30,
+                    ),
+              ),
+            ],
+          ),
+        ),
         actions: [
           IconButton(
             icon: const Icon(Icons.notifications_outlined),
@@ -106,16 +120,17 @@ class _HomeScreenState extends State<HomeScreen> {
               );
             },
           ),
-          IconButton( 
+          IconButton(
             icon: const Icon(Icons.account_circle_outlined),
-             onPressed: () { 
-              Navigator.of(context).push( 
-                MaterialPageRoute(builder: (context) => const ProfileScreen()), 
-                ); 
-              }, 
+            onPressed: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+              );
+            },
           ),
         ],
-      ),
+      )
+,
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,

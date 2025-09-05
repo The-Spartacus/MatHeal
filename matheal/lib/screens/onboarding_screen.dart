@@ -1,4 +1,3 @@
-// lib/screens/onboarding_screen.dart
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../utils/theme.dart';
@@ -18,22 +17,27 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   final List<OnboardingPage> _pages = [
     OnboardingPage(
       title: 'Track Your Health',
-      description: 'Monitor your pregnancy journey with personalized reminders and health tracking.',
-      imagePath: 'assets/onboarding1.png',
-      icon: Icons.favorite,
+      description:
+          'Monitor your pregnancy journey with personalized reminders and health tracking.',
+      imagePath: 'assets/onboarding/onboarding1.png',
     ),
     OnboardingPage(
       title: 'Smart Reminders',
-      description: 'Never miss medications, appointments, or important health checkups.',
-      imagePath: 'assets/onboarding2.png',
-      icon: Icons.notifications_active,
+      description:
+          'Never miss medications, appointments, or important health checkups.',
+      imagePath: 'assets/onboarding/onboarding2.png',
     ),
     OnboardingPage(
       title: 'AI Health Assistant',
-      description: 'Get instant answers to your health questions from our AI assistant.',
-      imagePath: 'assets/onboarding3.png',
-      icon: Icons.psychology,
+      description:
+          'Get instant answers to your health questions from our AI assistant.',
+      imagePath: 'assets/onboarding/onboarding3.png',
     ),
+    OnboardingPage(
+        title: 'Excersise Guidance',
+        description:
+            'Stay active and healthy with pregnancy-safe exercise routines and tips.',
+        imagePath: 'assets/onboarding/onboarding4.png'),
   ];
 
   @override
@@ -60,11 +64,12 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _completeOnboarding() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('hasSeenOnboarding', true);
-    
+
     if (mounted) {
       Navigator.of(context).pushReplacement(
         PageRouteBuilder(
-          pageBuilder: (context, animation, secondaryAnimation) => const LoginScreen(),
+          pageBuilder: (context, animation, secondaryAnimation) =>
+              const LoginScreen(),
           transitionsBuilder: (context, animation, secondaryAnimation, child) {
             return SlideTransition(
               position: animation.drive(
@@ -81,127 +86,154 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.background,
-      body: SafeArea(
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+floatingActionButtonLocation: _currentIndex < _pages.length - 1
+    ? FloatingActionButtonLocation.endFloat
+    : FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: _currentIndex < _pages.length - 1
+          ? SizedBox(
+        width: 70, // Adjust the width as needed
+        height: 70,  // Adjust the height as needed
+        child: FloatingActionButton(
+          onPressed: _completeOnboarding,
+          backgroundColor: AppColors.primary,
+          child : Icon(Icons.arrow_forward, color: Colors.white)  ,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(50.0), // Adjust the radius as needed
+          ),
+          ),
+        )
+          : SizedBox(
+        width: 200, // Adjust the width as needed
+        height: 50,  // Adjust the height as needed
+        child: FloatingActionButton.extended(
+          onPressed: _completeOnboarding,
+          backgroundColor: AppColors.primary,
+          label: const Text(
+            'Get Started',
+            style: TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ),
+      ),
+      body: Stack(
+        children: [
+          PageView.builder(
+            controller: _pageController,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemCount: _pages.length,
+            itemBuilder: (context, index) {
+              return Stack(
+                fit: StackFit.expand,
                 children: [
-                  if (_currentIndex > 0)
-                    TextButton(
-                      onPressed: () => _pageController.previousPage(
-                        duration: const Duration(milliseconds: 300),
-                        curve: Curves.easeInOut,
-                      ),
-                      child: const Text('Back'),
-                    )
-                  else
-                    const SizedBox(width: 60),
-                  Row(
-                    children: List.generate(
-                      _pages.length,
-                      (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.symmetric(horizontal: 4),
-                        width: _currentIndex == index ? 32 : 8,
-                        height: 8,
-                        decoration: BoxDecoration(
-                          color: _currentIndex == index 
-                              ? AppColors.primary
-                              : AppColors.textHint,
-                          borderRadius: BorderRadius.circular(4),
-                        ),
+                  Image.asset(
+                    _pages[index].imagePath,
+                    fit: BoxFit.cover,
+                  ),
+                  Container(
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [
+                          const Color.fromARGB(0, 0, 0, 0).withOpacity(0.1),
+                          const Color.fromARGB(0, 0, 0, 0).withOpacity(0.5),
+                        ],
                       ),
                     ),
                   ),
-                  TextButton(
-                    onPressed: _skipOnboarding,
-                    child: const Text('Skip'),
-                  ),
-                ],
-              ),
-            ),
-            Expanded(
-              child: PageView.builder(
-                controller: _pageController,
-                onPageChanged: (index) {
-                  setState(() {
-                    _currentIndex = index;
-                  });
-                },
-                itemCount: _pages.length,
-                itemBuilder: (context, index) {
-                  return Padding(
-                    padding: const EdgeInsets.all(32.0),
+                  Padding(
+                    padding: const EdgeInsets.all(65.0),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
+                      mainAxisAlignment: MainAxisAlignment.end,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Container(
-                          width: 200,
-                          height: 200,
-                          decoration: BoxDecoration(
-                            color: AppColors.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(100),
-                          ),
-                          child: Icon(
-                            _pages[index].icon,
-                            size: 100,
-                            color: const Color.fromARGB(255, 59, 243, 182),
-                          ),
-                        ),
-                        const SizedBox(height: 48),
                         Text(
                           _pages[index].title,
-                          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.textPrimary,
-                          ),
+                          style: Theme.of(context)
+                              .textTheme
+                              .headlineMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.white,
+                              ),
                           textAlign: TextAlign.center,
                         ),
                         const SizedBox(height: 16),
                         Text(
                           _pages[index].description,
-                          style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: AppColors.textSecondary,
-                            height: 1.5,
-                          ),
+                          style:
+                              Theme.of(context).textTheme.bodyLarge?.copyWith(
+                                    color: Colors.white.withOpacity(0.8),
+                                    height: 1.5,
+                                  ),
                           textAlign: TextAlign.center,
                         ),
                       ],
                     ),
-                  );
-                },
-              ),
-            ),
-            Padding(
-              padding: const EdgeInsets.all(32.0),
-              child: SizedBox(
-                width: double.infinity,
-                height: 50,
-                child: ElevatedButton(
-                  onPressed: _nextPage,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primary,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(25),
-                    ),
                   ),
-                  child: Text(
-                    _currentIndex == _pages.length - 1 ? 'Get Started' : 'Next',
-                    style: const TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.w600,
-                      color: Colors.white,
+                ],
+              );
+            },
+          ),
+          Positioned(
+            top: 0,
+            left: 0,
+            right: 0,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    if (_currentIndex > 0)
+                      TextButton(
+                        onPressed: () => _pageController.previousPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOut,
+                        ),
+                        child: Text(
+                          'Back',
+                          style: TextStyle(color: AppColors.primary),
+                        ),
+                      )
+                    else
+                      const SizedBox(width: 60),
+                    Row(
+                      children: List.generate(
+                        _pages.length,
+                        (index) => AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: _currentIndex == index ? 32 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: _currentIndex == index
+                                ? AppColors.primary
+                                : AppColors.textHint,
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        ),
+                      ),
                     ),
-                  ),
+                    TextButton(
+                      onPressed: _skipOnboarding,
+                      child: Text(
+                        'Skip',
+                        style: TextStyle(color: AppColors.primary),
+                      ),
+                    ),
+                  ],
                 ),
               ),
             ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
@@ -211,12 +243,10 @@ class OnboardingPage {
   final String title;
   final String description;
   final String imagePath;
-  final IconData icon;
 
   OnboardingPage({
     required this.title,
     required this.description,
     required this.imagePath,
-    required this.icon,
   });
 }
