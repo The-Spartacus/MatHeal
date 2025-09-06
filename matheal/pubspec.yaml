@@ -42,7 +42,7 @@ dependencies:
 
   
   # Media & Auth
-  image_picker: ^0.8.7
+  image_picker: ^1.1.2
   url_launcher: ^6.3.0
 
   local_auth: ^2.1.5

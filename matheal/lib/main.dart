@@ -51,20 +51,24 @@ void main() async {
   tz.initializeTimeZones();
 
   // Initialize notifications
-  await NotificationService.init('Asia/Kolkata', timeZoneName: 'Asia/Kolkata',
-   onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
-  );
+  await NotificationService.init(
+  timeZoneName: 'Asia/Kolkata',
+  onDidReceiveNotificationResponse: onDidReceiveNotificationResponse,
+);
 
   
 
   runApp(const MatHealApp());
 }
 void onDidReceiveNotificationResponse(NotificationResponse notificationResponse) {
-  if (notificationResponse.payload == 'alarm') {
-    // Use the navigatorKey to push the AlarmScreen
-    navigatorKey.currentState?.pushNamed('/alarm');
+  if (notificationResponse.payload != null) {
+    navigatorKey.currentState?.pushNamed(
+      '/alarm',
+      arguments: notificationResponse.payload, // ✅ pass medicine name
+    );
   }
 }
+
 
 
 class MatHealApp extends StatelessWidget {
@@ -112,9 +116,13 @@ class MatHealApp extends StatelessWidget {
                 }
               },
             ),
-                  routes: {
-        '/alarm': (context) => const AlarmScreen(),
-      },
+routes: {
+  '/alarm': (context) {
+    final medicineName = ModalRoute.of(context)!.settings.arguments as String?;
+    return AlarmScreen(medicineName: medicineName ?? "Medicine");
+  },
+},
+
           );
         },
       ),

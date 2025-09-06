@@ -1,105 +1,94 @@
-// lib/screens/auth/signup_screen.dart
+// lib/screens/auth/doctor_signup_screen.dart
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
-import 'package:provider/provider.dart';
-import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
-import '../../providers/user_provider.dart';
-import '../../models/user_model.dart';
+import 'package:matheal/screens/auth/login_screen.dart';
+import '../../services/doctor_service.dart';
+import '../../models/doctor_model.dart';
 import '../../utils/theme.dart';
-import '../home_screen.dart';
-import '../auth/doctor_signup_screen.dart';
+import 'login_screen.dart'; // Ensure this is imported
 
-class SignupScreen extends StatefulWidget {
-  const SignupScreen({super.key});
+class DoctorSignupScreen extends StatefulWidget {
+  const DoctorSignupScreen({super.key});
 
   @override
-  State<SignupScreen> createState() => _SignupScreenState();
+  State<DoctorSignupScreen> createState() => _DoctorSignupScreenState();
 }
 
-class _SignupScreenState extends State<SignupScreen> {
+class _DoctorSignupScreenState extends State<DoctorSignupScreen> {
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final _confirmPasswordController = TextEditingController();
+  final _hospitalController = TextEditingController();
+  final _specializationController = TextEditingController();
+
+  bool _loading = false;
   bool _isPasswordVisible = false;
-  bool _isConfirmPasswordVisible = false;
-  bool _isLoading = false;
 
   @override
   void dispose() {
     _nameController.dispose();
     _emailController.dispose();
     _passwordController.dispose();
-    _confirmPasswordController.dispose();
+    _hospitalController.dispose();
+    _specializationController.dispose();
     super.dispose();
   }
 
-  Future<void> _signup() async {
+  Future<void> _signupDoctor() async {
     if (!_formKey.currentState!.validate()) return;
 
-    setState(() => _isLoading = true);
-    
-    try {
-      final authService = context.read<AuthService>();
-      final firestoreService = context.read<FirestoreService>();
-      final userProvider = context.read<UserProvider>();
+    setState(() => _loading = true);
 
-      final credential = await authService.createUserWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
+    try {
+      final auth = FirebaseAuth.instance;
+      final userCredential = await auth.createUserWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
 
-      if (credential?.user != null) {
-        // Create user document
-        final user = UserModel(
-          uid: credential!.user!.uid,
-          name: _nameController.text.trim(),
-          email: _emailController.text.trim(),
-          createdAt: DateTime.now(),
+      final doctor = Doctor(
+        id: userCredential.user!.uid,
+        name: _nameController.text.trim(),
+        email: _emailController.text.trim(),
+        hospital: _hospitalController.text.trim(),
+        specialization: _specializationController.text.trim(),
+      );
+
+      await DoctorService().createDoctor(doctor);
+
+      if (mounted) {
+        HapticFeedback.lightImpact();
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Doctor account created successfully!"),
+            backgroundColor: AppColors.success,
+          ),
         );
-
-        await firestoreService.createUser(user);
-        
-        // Create basic profile
-        final profile = UserProfile(uid: credential.user!.uid);
-        await firestoreService.createOrUpdateProfile(profile);
-
-        userProvider.setUser(user);
-        userProvider.setProfile(profile);
-
-        if (mounted) {
-          HapticFeedback.lightImpact();
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account created successfully!'),
-              backgroundColor: AppColors.success,
-            ),
-          );
-          
-          Navigator.of(context).pushReplacement(
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-            ),
-          );
-        }
+        Navigator.pop(context);
+      }
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text("Signup failed: ${e.message}"),
+            backgroundColor: AppColors.error,
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text("Signup failed: $e"),
             backgroundColor: AppColors.error,
           ),
         );
       }
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _loading = false);
       }
     }
   }
@@ -126,21 +115,22 @@ class _SignupScreenState extends State<SignupScreen> {
                 child: Column(
                   children: [
                     Container(
-                        width: 150,
-                        height: 150,
-                        decoration: BoxDecoration  (
-                          color: const Color.fromARGB(0, 245, 243, 243),
-                          borderRadius: BorderRadius.circular(30),),
-                        child: Image.asset(
-                            "assets/images/logo.png",  // your splash logo
-                            width: 225,
-                            height: 225,
-                            fit: BoxFit.contain,
-                            ),   
+                      width: 225,
+                      height: 225,
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(0, 245, 243, 243),
+                        borderRadius: BorderRadius.circular(30),
                       ),
+                      child: Image.asset(
+                        "assets/images/logo.png",
+                        width: 225,
+                        height: 225,
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                     const SizedBox(height: 16),
                     Text(
-                      'Create Account',
+                      'Create Doctor Account',
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
@@ -148,7 +138,7 @@ class _SignupScreenState extends State<SignupScreen> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Join MatHeal and start your health journey',
+                      'Register and start helping patients on MatHeal',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.textSecondary,
                       ),
@@ -237,46 +227,34 @@ class _SignupScreenState extends State<SignupScreen> {
                         ),
                         const SizedBox(height: 20),
                         TextFormField(
-                          controller: _confirmPasswordController,
-                          obscureText: !_isConfirmPasswordVisible,
-                          decoration: InputDecoration(
-                            labelText: 'Confirm Password',
-                            prefixIcon: const Icon(Icons.lock_outline),
-                            suffixIcon: IconButton(
-                              icon: Icon(
-                                _isConfirmPasswordVisible
-                                    ? Icons.visibility_off
-                                    : Icons.visibility,
-                              ),
-                              onPressed: () {
-                                setState(() {
-                                  _isConfirmPasswordVisible = !_isConfirmPasswordVisible;
-                                });
-                              },
-                            ),
+                          controller: _hospitalController,
+                          decoration: const InputDecoration(
+                            labelText: 'Hospital Name',
+                            prefixIcon: Icon(Icons.local_hospital_outlined),
                           ),
-                          validator: (value) {
-                            if (value == null || value.isEmpty) {
-                              return 'Please confirm your password';
-                            }
-                            if (value != _passwordController.text) {
-                              return 'Passwords do not match';
-                            }
-                            return null;
-                          },
+                          validator: (v) => v!.isEmpty ? "Enter hospital name" : null,
+                        ),
+                        const SizedBox(height: 20),
+                        TextFormField(
+                          controller: _specializationController,
+                          decoration: const InputDecoration(
+                            labelText: 'Specialization',
+                            prefixIcon: Icon(Icons.star_outline),
+                          ),
+                          validator: (v) => v!.isEmpty ? "Enter specialization" : null,
                         ),
                         const SizedBox(height: 24),
                         SizedBox(
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: _isLoading ? null : _signup,
-                            child: _isLoading
+                            onPressed: _loading ? null : _signupDoctor,
+                            child: _loading
                                 ? const CircularProgressIndicator(
                                     valueColor: AlwaysStoppedAnimation(Colors.white),
                                   )
                                 : const Text(
-                                    'Create Account',
+                                    'Create Doctor Account',
                                     style: TextStyle(
                                       fontSize: 16,
                                       fontWeight: FontWeight.w600,
@@ -312,19 +290,18 @@ class _SignupScreenState extends State<SignupScreen> {
                   ),
                 ],
               ),
- 
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Are you a doctor?"),
+                  const Text("Are you a user?"),
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const DoctorSignupScreen()),
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
                       );
                     },
                     child: const Text(
-                      'Doctor Login',
+                      'User Sign Up',
                       style: TextStyle(fontWeight: FontWeight.w600),
                     ),
                   ),

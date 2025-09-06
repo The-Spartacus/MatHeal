@@ -2,6 +2,8 @@
 
 import 'package:flutter/material.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
+import 'package:matheal/screens/features/book_appointment_screen.dart';
+import 'package:matheal/screens/features/user_appointments_screen.dart';
 import 'package:matheal/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -11,7 +13,6 @@ import '../providers/theme_provider.dart';
 import '../utils/theme.dart';
 import 'features/medicine_reminders_screen.dart';
 import 'features/consumed_medicines_screen.dart';
-import 'features/appointments_screen.dart';
 import 'features/feeding_reminders_screen.dart';
 import 'features/diet_suggestions_screen.dart';
 import 'features/exercise_suggestions_screen.dart';
@@ -151,6 +152,8 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
 
       endDrawer: _buildDrawer(context), // 👉 Added Drawer
+
+
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -185,10 +188,11 @@ class _HomeScreenState extends State<HomeScreen> {
 Widget _buildDrawer(BuildContext context) {
   return Drawer(
     child: Column(
+      
       children: [
         // Smaller header like AppBar
         Padding(
-          padding: const EdgeInsets.only(top: 16.0), // adjust this value as needed
+          padding: const EdgeInsets.only(top: 30.0), // adjust this value as needed
           child: Container(
             height: kToolbarHeight, // same as AppBar height
             width: double.infinity,
@@ -209,8 +213,17 @@ Widget _buildDrawer(BuildContext context) {
           child: ListView(
             padding: const EdgeInsets.all(8), // smaller padding
             children: [
+                            _buildSettingsSection(
+                'Profile',
+                [
+                  _buildProfileTile(context),
+                ],
+              ),
+              
               // Preferences Section
               _buildSettingsSection(
+
+                
                 'Preferences',
                 [
                   _buildThemeToggle(),
@@ -233,6 +246,19 @@ Widget _buildDrawer(BuildContext context) {
     ),
   );
 }
+
+Widget _buildProfileTile(BuildContext context) {
+  return ListTile(
+    leading: const Icon(Icons.person, color: AppColors.primary),
+    title: const Text('Profile'),
+    onTap: () {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+      );
+    },
+  );
+}
+
 
 Widget _buildSettingsSection(String title, List<Widget> children) {
   return Card(
@@ -476,7 +502,17 @@ Widget _buildSettingsSection(String title, List<Widget> children) {
         color: const Color(0xFFE8F5E8),
         iconColor: const Color(0xFF388E3C),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const AppointmentsScreen()),
+          MaterialPageRoute(builder: (context) => const UserAppointmentsScreen()),
+        ),
+      ),
+            FeatureCard(
+        title: 'Book Appointments',
+        subtitle: 'Schedule Appointments',
+        icon: Icons.save,
+        color: const Color(0xFFE8F5E8),
+        iconColor: const Color(0xFF388E3C),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (context) => const BookAppointmentScreen()),
         ),
       ),
       FeatureCard(
@@ -511,27 +547,7 @@ Widget _buildSettingsSection(String title, List<Widget> children) {
           MaterialPageRoute(
               builder: (context) => const ExerciseSuggestionsScreen()),
         ),
-      ),
-      FeatureCard(
-        title: 'AI Health Assistant',
-        subtitle: 'Ask health questions',
-        icon: Icons.psychology,
-        color: const Color(0xFFFCE4EC),
-        iconColor: const Color(0xFFC2185B),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const ChatScreen()),
-        ),
-      ),
-      FeatureCard(
-        title: 'Profile Settings',
-        subtitle: 'Manage your info',
-        icon: Icons.person,
-        color: const Color(0xFFE8EAF6),
-        iconColor: const Color(0xFF3F51B5),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const ProfileScreen()),
-        ),
-      ),
+      )
     ];
 
     return GridView.builder(

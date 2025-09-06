@@ -421,12 +421,12 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
                     docId = await firestoreService.addReminder(reminderModel);
                   }
                   
-                  await NotificationService.scheduleNotification(
+                  await NotificationService.scheduleMedicine(
                     id: docId.hashCode,
                     title: 'Medicine Reminder',
                     body: 'Time to take ${titleController.text.trim()}',
                     scheduledDate: finalScheduleTime,
-                    repeatInterval: selectedRepeat,
+                    repeatInterval: selectedRepeat, reminderId: '',
                   );
 
                   HapticFeedback.lightImpact();

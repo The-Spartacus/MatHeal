@@ -1,30 +1,26 @@
-// lib/screens/auth/login_screen.dart
+// lib/screens/auth/doctor_login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:matheal/models/doctor_model.dart';
-import 'package:provider/provider.dart';
-import '../../services/auth_service.dart';
-import '../../services/firestore_service.dart';
-import '../../providers/user_provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:matheal/screens/auth/doctor_signup_screen.dart';
+import 'package:matheal/screens/auth/login_screen.dart';
+import 'package:matheal/screens/features/doctor_home_screen.dart';
+import '../../services/doctor_service.dart';
+import '../../models/doctor_model.dart';
 import '../../utils/theme.dart';
-import '../home_screen.dart';
-import 'signup_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../auth/doctor_login_screen.dart';
 
-class LoginScreen extends StatefulWidget {
-  const LoginScreen({super.key});
+class DoctorLoginScreen extends StatefulWidget {
+  const DoctorLoginScreen({super.key});
 
   @override
-  State<LoginScreen> createState() => _LoginScreenState();
+  State<DoctorLoginScreen> createState() => _DoctorLoginScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen> {
-  final _formKey = GlobalKey<FormState>();
+class _DoctorLoginScreenState extends State<DoctorLoginScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
+  bool _loading = false;
   bool _isPasswordVisible = false;
-  bool _isLoading = false;
 
   @override
   void dispose() {
@@ -33,57 +29,46 @@ class _LoginScreenState extends State<LoginScreen> {
     super.dispose();
   }
 
-  Future<void> _login() async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _loginDoctor() async {
+    setState(() => _loading = true);
 
-    setState(() => _isLoading = true);
-    
     try {
-      final authService = context.read<AuthService>();
-      final firestoreService = context.read<FirestoreService>();
-      final userProvider = context.read<UserProvider>();
-
-      final credential = await authService.signInWithEmailAndPassword(
-        _emailController.text.trim(),
-        _passwordController.text,
+      final auth = FirebaseAuth.instance;
+      final userCredential = await auth.signInWithEmailAndPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
       );
 
-      if (credential?.user != null) {
-        // Load user data
-        final user = await firestoreService.getUser(credential!.user!.uid);
-        final profile = await firestoreService.getProfile(credential.user!.uid);
-        
-        userProvider.setUser(user);
-        userProvider.setProfile(profile);
+      final doctor = await DoctorService().getDoctorById(userCredential.user!.uid);
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
+      if (doctor == null) {
+        await auth.signOut();
+        throw Exception("Doctor profile not found!");
+      }
 
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Welcome Dr. ${doctor.name}!")),
+        );
+      }
 
-        if (mounted) {
-          HapticFeedback.lightImpact();
-          Navigator.of(context).pushReplacement(
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
-              },
-            ),
-          );
-        }
+      // Navigate to Doctor Dashboard
+      Navigator.pushReplacement(context, MaterialPageRoute(builder: (_) => DoctorHomeScreen(doctor: doctor)));
+    } on FirebaseAuthException catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text("Login failed: ${e.message}")),
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(e.toString()),
-            backgroundColor: AppColors.error,
-          ),
+          SnackBar(content: Text("Login failed: $e")),
         );
       }
     } finally {
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _loading = false);
       }
     }
   }
@@ -103,33 +88,34 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Column(
                   children: [
                     Container(
+                      width: 150,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        color: const Color.fromARGB(0, 245, 243, 243),
+                        borderRadius: BorderRadius.circular(30),
+                      ),
+                      child: Image.asset(
+                        "assets/images/logo.png",
                         width: 150,
                         height: 150,
-                        decoration: BoxDecoration  (
-                          color: const Color.fromARGB(0, 245, 243, 243),
-                          borderRadius: BorderRadius.circular(30),),
-                        child: Image.asset(
-                            "assets/images/logo.png",  // your splash logo
-                            width: 150,
-                            height: 150,
-                            fit: BoxFit.contain,
-                            ),   
+                        fit: BoxFit.contain,
                       ),
+                    ),
                     const SizedBox(height: 10),
                     Text(
-                      'Welcome Back',
+                      'Doctor Portal',
                       style: Theme.of(context).textTheme.headlineLarge?.copyWith(
                         fontWeight: FontWeight.bold,
                         color: AppColors.textPrimary,
                       ),
                     ),
                     const SizedBox(height: 8),
-                    /*Text(
-                      'Sign in to continue your health\n journey',
+                    Text(
+                      'Sign in to manage patient care',
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
                         color: AppColors.textSecondary,
                       ),
-                    ),*/
+                    ),
                   ],
                 ),
               ),
@@ -142,7 +128,6 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Padding(
                   padding: const EdgeInsets.all(24.0),
                   child: Form(
-                    key: _formKey,
                     child: Column(
                       children: [
                         TextFormField(
@@ -156,8 +141,7 @@ class _LoginScreenState extends State<LoginScreen> {
                             if (value == null || value.isEmpty) {
                               return 'Please enter your email';
                             }
-                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                                .hasMatch(value)) {
+                            if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
                               return 'Please enter a valid email';
                             }
                             return null;
@@ -198,8 +182,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           width: double.infinity,
                           height: 50,
                           child: ElevatedButton(
-                            onPressed: _isLoading ? null : _login,
-                            child: _isLoading
+                            onPressed: _loading ? null : _loginDoctor,
+                            child: _loading
                                 ? const CircularProgressIndicator(
                                     valueColor: AlwaysStoppedAnimation(Colors.white),
                                   )
@@ -215,7 +199,6 @@ class _LoginScreenState extends State<LoginScreen> {
                         const SizedBox(height: 16),
                         TextButton(
                           onPressed: () {
-                            // TODO: Implement forgot password
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text('Forgot password feature coming soon'),
@@ -233,22 +216,11 @@ class _LoginScreenState extends State<LoginScreen> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Text("Don't have an account? "),
+                  const Text("Don't have a doctor account? "),
                   TextButton(
                     onPressed: () {
-                      Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) =>
-                              const SignupScreen(),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            return SlideTransition(
-                              position: animation.drive(
-                                Tween(begin: const Offset(1.0, 0.0), end: Offset.zero),
-                              ),
-                              child: child,
-                            );
-                          },
-                        ),
+                       Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const DoctorSignupScreen()),
                       );
                     },
                     child: const Text(
@@ -258,23 +230,23 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Are you a doctor?"),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const DoctorLoginScreen()),
-                          );
-                        },
-                        child: const Text(
-                          'Doctor Login',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Text("Are you a patient?"),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.of(context).push(
+                        MaterialPageRoute(builder: (_) => const LoginScreen()),
+                      );
+                    },
+                    child: const Text(
+                      'Patient Login',
+                      style: TextStyle(fontWeight: FontWeight.w600),
+                    ),
                   ),
+                ],
+              ),
               const SizedBox(height: 25),
               const Center(
                 child: Text(
@@ -292,4 +264,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-
