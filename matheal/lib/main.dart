@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:provider/provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -18,7 +19,7 @@ import 'providers/user_provider.dart';
 import 'screens/splash_screen.dart';
 import 'screens/alarm_screen.dart'; // <-- add this import
 import 'utils/theme.dart';
-import 'package:firebase_auth/firebase_auth.dart'; // <-- add this
+import 'package:firebase_auth/firebase_auth.dart'; // <-- add this import
 
 
 
@@ -29,6 +30,13 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    await dotenv.load();
+    print("✅ .env loaded successfully");
+  } catch (e) {
+    print("❌ Failed to load .env: $e");
+  }
 
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,

@@ -94,7 +94,7 @@ floatingActionButtonLocation: _currentIndex < _pages.length - 1
         width: 70, // Adjust the width as needed
         height: 70,  // Adjust the height as needed
         child: FloatingActionButton(
-          onPressed: _completeOnboarding,
+          onPressed: _nextPage,
           backgroundColor: AppColors.primary,
           child : Icon(Icons.arrow_forward, color: Colors.white)  ,
           shape: RoundedRectangleBorder(

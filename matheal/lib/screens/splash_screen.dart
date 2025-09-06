@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import '../utils/theme.dart';
 import 'onboarding_screen.dart';
 import 'home_screen.dart';
 import 'package:provider/provider.dart';

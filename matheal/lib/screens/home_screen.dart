@@ -1,8 +1,13 @@
 // ignore_for_file: deprecated_member_use
 
 import 'package:flutter/material.dart';
+import 'package:matheal/screens/auth/login_screen.dart';
+import 'package:matheal/services/auth_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
+import '../providers/theme_provider.dart';
 import '../utils/theme.dart';
 import 'features/medicine_reminders_screen.dart';
 import 'features/consumed_medicines_screen.dart';
@@ -12,7 +17,7 @@ import 'features/diet_suggestions_screen.dart';
 import 'features/exercise_suggestions_screen.dart';
 import 'features/chat_screen.dart';
 import 'profile/profile_screen.dart';
-import 'settings/settings_screen.dart';
+import 'features/article.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -23,19 +28,38 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
+  bool _isDarkMode = false;
+    bool _notificationsEnabled = true;
+
 
   // Screens for each bottom nav tab
   late final List<Widget> _screens = [
-    _buildHomeTab(), // Home tab = original dashboard with feature grid
+    _buildHomeTab(), // Home tab
     const MedicineRemindersScreen(),
     const ChatScreen(),
-    const SettingsScreen(),
+  const ArticleScreen(), // New Article tab
   ];
 
   void _onItemTapped(int index) {
     setState(() {
       _selectedIndex = index;
     });
+  }
+    void initState() {
+    super.initState();
+    _loadPreferences();
+  }
+
+  Future<void> _loadPreferences() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      _notificationsEnabled = prefs.getBool('notificationsEnabled') ?? true;
+    });
+  }
+
+  Future<void> _saveNotificationPreference(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notificationsEnabled', value);
   }
 
   // 👇 Home dashboard tab
@@ -78,7 +102,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color.fromARGB(14, 59, 169, 243),
+              color: const Color.fromARGB(0, 59, 169, 243),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Image.asset(
@@ -88,7 +112,7 @@ class _HomeScreenState extends State<HomeScreen> {
             ),
           ),
         ),
-        centerTitle: true, // 👈 keeps the text in center
+        centerTitle: true,
         title: RichText(
           text: TextSpan(
             children: [
@@ -103,7 +127,7 @@ class _HomeScreenState extends State<HomeScreen> {
               TextSpan(
                 text: "Heal",
                 style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: Colors.black,
+                      color: const Color.fromARGB(255, 0, 0, 0),
                       fontWeight: FontWeight.bold,
                       fontSize: 30,
                     ),
@@ -112,25 +136,21 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         actions: [
-          IconButton(
-            icon: const Icon(Icons.notifications_outlined),
-            onPressed: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Notifications feature coming soon')),
-              );
-            },
-          ),
-          IconButton(
-            icon: const Icon(Icons.account_circle_outlined),
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const ProfileScreen()),
+          Builder(
+            builder: (context) {
+              return IconButton(
+                icon: const Icon(
+                    Icons.settings_outlined), // Changed icon to settings
+                onPressed: () {
+                  Scaffold.of(context).openEndDrawer(); // Opens the end drawer
+                },
               );
             },
           ),
         ],
-      )
-,
+      ),
+
+      endDrawer: _buildDrawer(context), // 👉 Added Drawer
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -153,12 +173,170 @@ class _HomeScreenState extends State<HomeScreen> {
             label: "AI",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings_outlined),
-            label: "Settings",
+            icon: Icon(Icons.newspaper_outlined),
+            label: "Articles",
           ),
         ],
       ),
     );
+  }
+
+  // 👉 Drawer Widget
+Widget _buildDrawer(BuildContext context) {
+  return Drawer(
+    child: Column(
+      children: [
+        // Smaller header like AppBar
+        Padding(
+          padding: const EdgeInsets.only(top: 16.0), // adjust this value as needed
+          child: Container(
+            height: kToolbarHeight, // same as AppBar height
+            width: double.infinity,
+            color: const Color.fromARGB(255, 253, 254, 255),
+            alignment: Alignment.center,
+            child: const Text(
+              'Settings',
+              style: TextStyle(
+                color: Colors.black,
+                fontSize: 18, // smaller than DrawerHeader default
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+        ), // ✅ Comma added here
+
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(8), // smaller padding
+            children: [
+              // Preferences Section
+              _buildSettingsSection(
+                'Preferences',
+                [
+                  _buildThemeToggle(),
+                  _buildNotificationToggle(),
+                ],
+              ),
+              const SizedBox(height: 16),
+
+              // Account Section
+              _buildSettingsSection(
+                'Account',
+                [
+                  _buildLogoutTile(context),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildSettingsSection(String title, List<Widget> children) {
+  return Card(
+    elevation: 1, // slightly lower for compactness
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // smaller radius
+    margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0), // less vertical space
+    child: Padding(
+      padding: const EdgeInsets.all(12), // reduced padding
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 14, // smaller font
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const Divider(height: 16, thickness: 1),
+          ...children,
+        ],
+      ),
+    ),
+  );
+}
+
+
+  Widget _buildThemeToggle() {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return SwitchListTile(
+          title: const Text('Dark Mode'),
+          subtitle: const Text('Switch between light and dark theme'),
+          value: themeProvider.isDarkMode,
+          onChanged: (_) => themeProvider.toggleTheme(),
+          secondary: Icon(
+            themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+            color: AppColors.primary,
+          ),
+        );
+      },
+    );
+  }
+  
+
+  Widget _buildNotificationToggle() {
+    return SwitchListTile(
+      title: const Text('Notifications'),
+      subtitle: const Text('Receive health reminders and updates'),
+      value: _notificationsEnabled,
+      onChanged: (value) {
+        setState(() => _notificationsEnabled = value);
+        _saveNotificationPreference(value);
+      },
+      secondary: const Icon(
+        Icons.notifications,
+        color: AppColors.primary,
+      ),
+    );
+  }
+
+
+
+  Widget _buildLogoutTile(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.logout, color: AppColors.error),
+      title: const Text(
+        'Logout',
+        style: TextStyle(color: AppColors.error),
+      ),
+      onTap: () async {
+        final shouldLogout = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Logout'),
+            content: const Text('Are you sure you want to logout?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                ),
+                child: const Text('Logout'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldLogout == true && context.mounted) {
+          await context.read<AuthService>().signOut();
+          context.read<UserProvider>().clear();
+
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      },
+    );
+  }
   }
 
   // --- welcome card
@@ -196,7 +374,8 @@ class _HomeScreenState extends State<HomeScreen> {
                           ? NetworkImage(profile!.avatarUrl!)
                           : null,
                       child: profile?.avatarUrl == null
-                          ? const Icon(Icons.person, color: Colors.white, size: 30)
+                          ? const Icon(Icons.person,
+                              color: Colors.white, size: 30)
                           : null,
                     ),
                     const SizedBox(width: 16),
@@ -227,7 +406,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 const SizedBox(height: 16),
                 if (profile?.weeksPregnant != null) ...[
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                     decoration: BoxDecoration(
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(20),
@@ -245,7 +425,8 @@ class _HomeScreenState extends State<HomeScreen> {
                   TextButton.icon(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (context) => const ProfileScreen()),
+                        MaterialPageRoute(
+                            builder: (context) => const ProfileScreen()),
                       );
                     },
                     icon: const Icon(Icons.edit, color: Colors.white, size: 16),
@@ -263,7 +444,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  // --- feature grid
+  // --- feature grid (unchanged)
   Widget _buildFeatureGrid(BuildContext context) {
     final features = [
       FeatureCard(
@@ -273,7 +454,8 @@ class _HomeScreenState extends State<HomeScreen> {
         color: const Color(0xFFE3F2FD),
         iconColor: const Color(0xFF1976D2),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const MedicineRemindersScreen()),
+          MaterialPageRoute(
+              builder: (context) => const MedicineRemindersScreen()),
         ),
       ),
       FeatureCard(
@@ -283,7 +465,8 @@ class _HomeScreenState extends State<HomeScreen> {
         color: const Color(0xFFF3E5F5),
         iconColor: const Color(0xFF7B1FA2),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const ConsumedMedicinesScreen()),
+          MaterialPageRoute(
+              builder: (context) => const ConsumedMedicinesScreen()),
         ),
       ),
       FeatureCard(
@@ -303,7 +486,8 @@ class _HomeScreenState extends State<HomeScreen> {
         color: const Color(0xFFFFF3E0),
         iconColor: const Color(0xFFF57C00),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const FeedingRemindersScreen()),
+          MaterialPageRoute(
+              builder: (context) => const FeedingRemindersScreen()),
         ),
       ),
       FeatureCard(
@@ -313,7 +497,8 @@ class _HomeScreenState extends State<HomeScreen> {
         color: const Color(0xFFF1F8E9),
         iconColor: const Color(0xFF689F38),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const DietSuggestionsScreen()),
+          MaterialPageRoute(
+              builder: (context) => const DietSuggestionsScreen()),
         ),
       ),
       FeatureCard(
@@ -323,7 +508,8 @@ class _HomeScreenState extends State<HomeScreen> {
         color: const Color(0xFFE0F2F1),
         iconColor: const Color(0xFF00695C),
         onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const ExerciseSuggestionsScreen()),
+          MaterialPageRoute(
+              builder: (context) => const ExerciseSuggestionsScreen()),
         ),
       ),
       FeatureCard(
@@ -417,7 +603,7 @@ class _HomeScreenState extends State<HomeScreen> {
       },
     );
   }
-}
+
 
 class FeatureCard {
   final String title;
