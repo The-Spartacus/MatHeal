@@ -1,13 +1,13 @@
-// lib/screens/features/doctor_home_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../models/doctor_model.dart';
 import 'doctor_appointments_screen.dart';
+import 'doctor_article_screen.dart'; // <- adjusted relative import (same folder)
 import '../../utils/theme.dart';
 
 class DoctorHomeScreen extends StatelessWidget {
   final Doctor doctor;
-  const DoctorHomeScreen({super.key, required this.doctor});
+  const DoctorHomeScreen({Key? key, required this.doctor}) : super(key: key);
 
   void _logout(BuildContext context) async {
     await FirebaseAuth.instance.signOut();
@@ -45,34 +45,16 @@ class DoctorHomeScreen extends StatelessWidget {
           ),
           _buildCard(
             context,
-            icon: Icons.medical_services_outlined,
+            icon: Icons.article,
             title: "Prescriptions",
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Prescriptions coming soon")),
-              );
-            },
-          ),
-          _buildCard(
-            context,
-            icon: Icons.chat_bubble_outline,
-            title: "Messages",
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Chat feature coming soon")),
-              );
-            },
-          ),
-          _buildCard(
-            context,
-            icon: Icons.analytics_outlined,
-            title: "Reports",
-            onTap: () {
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text("Reports coming soon")),
-              );
-            },
-          ),
+            // Pass the required named parameter `doctorId`. Do NOT use `const` here
+            onTap: () => Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (_) => DoctorArticleScreen(doctorId: doctor.id),
+              ),
+            ),
+          )
         ],
       ),
     );

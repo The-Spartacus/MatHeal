@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:matheal/screens/features/book_appointment_screen.dart';
 import 'package:matheal/screens/features/user_appointments_screen.dart';
+import 'package:matheal/screens/patient_article_screen.dart';
 import 'package:matheal/services/auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -38,7 +39,7 @@ class _HomeScreenState extends State<HomeScreen> {
     _buildHomeTab(), // Home tab
     const MedicineRemindersScreen(),
     const ChatScreen(),
-  const ArticleScreen(), // New Article tab
+    const PatientArticleScreen(), // New Article tab
   ];
 
   void _onItemTapped(int index) {
@@ -164,11 +165,11 @@ class _HomeScreenState extends State<HomeScreen> {
         showUnselectedLabels: true,
         items: const [
           BottomNavigationBarItem(
-            icon: Icon(Icons.home_outlined),
+            icon: Icon(Icons.home),
             label: "Home",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.medication_outlined),
+            icon: Icon(Icons.alarm),
             label: "Reminders",
           ),
           BottomNavigationBarItem(
@@ -176,7 +177,7 @@ class _HomeScreenState extends State<HomeScreen> {
             label: "AI",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.newspaper_outlined),
+            icon: Icon(Icons.article ),
             label: "Articles",
           ),
         ],
