@@ -1,14 +1,21 @@
+import 'package:flutter/foundation.dart';
+
+/// ---------------- USER MODEL ----------------
 class UserModel {
   final String uid;
   final String name;
   final String email;
   final DateTime createdAt;
+  final String role; // "user" or "doctor"
+  final DoctorProfile? doctorProfile; // 👈 present only if doctor
 
   UserModel({
     required this.uid,
     required this.name,
     required this.email,
     required this.createdAt,
+    this.role = "user",
+    this.doctorProfile,
   });
 
   factory UserModel.fromFirestore(Map<String, dynamic> data) {
@@ -17,8 +24,16 @@ class UserModel {
       name: data['name'] ?? '',
       email: data['email'] ?? '',
       createdAt: (data['createdAt'] as dynamic)?.toDate() ?? DateTime.now(),
+      role: data['role'] ?? 'user',
+      doctorProfile: data['doctorProfile'] != null
+          ? DoctorProfile.fromFirestore(data['doctorProfile'])
+          : null,
     );
   }
+
+  get specialization => null;
+
+  get hospitalName => null;
 
   Map<String, dynamic> toFirestore() {
     return {
@@ -26,10 +41,59 @@ class UserModel {
       'name': name,
       'email': email,
       'createdAt': createdAt,
+      'role': role,
+      if (doctorProfile != null) 'doctorProfile': doctorProfile!.toFirestore(),
+    };
+  }
+
+  UserModel copyWith({
+    String? uid,
+    String? name,
+    String? email,
+    DateTime? createdAt,
+    String? role,
+    DoctorProfile? doctorProfile,
+  }) {
+    return UserModel(
+      uid: uid ?? this.uid,
+      name: name ?? this.name,
+      email: email ?? this.email,
+      createdAt: createdAt ?? this.createdAt,
+      role: role ?? this.role,
+      doctorProfile: doctorProfile ?? this.doctorProfile,
+    );
+  }
+}
+
+/// ---------------- DOCTOR PROFILE ----------------
+class DoctorProfile {
+  final String specialization;
+  final String hospitalName;
+
+  DoctorProfile({
+    required this.specialization,
+    required this.hospitalName,
+  });
+
+  factory DoctorProfile.fromFirestore(Map<String, dynamic>? data) {
+    if (data == null) {
+      return DoctorProfile(specialization: "", hospitalName: "");
+    }
+    return DoctorProfile(
+      specialization: data['specialization'] ?? '',
+      hospitalName: data['hospitalName'] ?? '',
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'specialization': specialization,
+      'hospitalName': hospitalName,
     };
   }
 }
 
+/// ---------------- USER PROFILE ----------------
 class UserProfile {
   final String uid;
   final int? age;
@@ -82,6 +146,7 @@ class UserProfile {
   }
 }
 
+/// ---------------- REMINDER MODEL ----------------
 class ReminderModel {
   final String? id;
   final String uid;
@@ -129,6 +194,7 @@ class ReminderModel {
   }
 }
 
+/// ---------------- CONSUMED MEDICINE ----------------
 class ConsumedMedicine {
   final String? id;
   final String uid;

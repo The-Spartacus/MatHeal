@@ -1,16 +1,15 @@
 // lib/screens/auth/login_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:matheal/models/doctor_model.dart';
 import 'package:provider/provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';
 import '../../providers/user_provider.dart';
 import '../../utils/theme.dart';
 import '../home_screen.dart';
 import 'signup_screen.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-import '../auth/doctor_login_screen.dart';
+import '../features/doctor_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -37,7 +36,7 @@ class _LoginScreenState extends State<LoginScreen> {
     if (!_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-    
+
     try {
       final authService = context.read<AuthService>();
       final firestoreService = context.read<FirestoreService>();
@@ -48,43 +47,65 @@ class _LoginScreenState extends State<LoginScreen> {
         _passwordController.text,
       );
 
-      if (credential?.user != null) {
-        // Load user data
-        final user = await firestoreService.getUser(credential!.user!.uid);
-        final profile = await firestoreService.getProfile(credential.user!.uid);
-        
-        userProvider.setUser(user);
-        userProvider.setProfile(profile);
+      if (credential?.user == null) {
+        throw Exception("Authentication failed");
+      }
 
-      final prefs = await SharedPreferences.getInstance();
-      await prefs.setBool('isLoggedIn', true);
+      final uid = credential!.user!.uid;
 
-
+      // Fetch user data from Firestore
+      final user = await firestoreService.getUser(uid);
+      if (user == null) {
+        // User not found in Firestore, log out
+        await context.read<AuthService>().signOut();
         if (mounted) {
-          HapticFeedback.lightImpact();
-          Navigator.of(context).pushReplacement(
-            PageRouteBuilder(
-              pageBuilder: (context, animation, secondaryAnimation) => const HomeScreen(),
-              transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                return FadeTransition(opacity: animation, child: child);
-              },
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text("User data not found. Please signup."),
+              backgroundColor: AppColors.error,
             ),
           );
         }
+        return;
+      }
+
+      // Fetch profile (optional for doctors)
+      final profile = await firestoreService.getProfile(uid);
+
+      // Set providers
+      userProvider.setUser(user);
+      userProvider.setProfile(profile);
+
+      // Save login state
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+
+      if (mounted) {
+        HapticFeedback.lightImpact();
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                user.role == "doctor"
+                    ? DoctorHomeScreen(doctor: user)
+                    : const HomeScreen(),
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+          ),
+        );
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(e.toString()),
+            content: Text("Login failed: $e"),
             backgroundColor: AppColors.error,
           ),
         );
       }
     } finally {
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -99,41 +120,41 @@ class _LoginScreenState extends State<LoginScreen> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const SizedBox(height: 20),
+
+              // Logo & Welcome
               Center(
                 child: Column(
                   children: [
                     Container(
-                        width: 150,
-                        height: 150,
-                        decoration: BoxDecoration  (
-                          color: const Color.fromARGB(0, 245, 243, 243),
-                          borderRadius: BorderRadius.circular(30),),
-                        child: Image.asset(
-                            "assets/images/logo.png",  // your splash logo
-                            width: 150,
-                            height: 150,
-                            fit: BoxFit.contain,
-                            ),   
+                      width: 150,
+                      height: 150,
+                      decoration: BoxDecoration(
+                        color: Colors.transparent,
+                        borderRadius: BorderRadius.circular(30),
                       ),
+                      child: Image.asset(
+                        "assets/images/logo.png",
+                        fit: BoxFit.contain,
+                      ),
+                    ),
                     const SizedBox(height: 10),
                     Text(
                       'Welcome Back',
-                      style: Theme.of(context).textTheme.headlineLarge?.copyWith(
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.textPrimary,
-                      ),
+                      style: Theme.of(context)
+                          .textTheme
+                          .headlineLarge
+                          ?.copyWith(
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.textPrimary,
+                          ),
                     ),
-                    const SizedBox(height: 8),
-                    /*Text(
-                      'Sign in to continue your health\n journey',
-                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                    ),*/
                   ],
                 ),
               ),
+
               const SizedBox(height: 20),
+
+              // Login Form
               Card(
                 elevation: 4,
                 shape: RoundedRectangleBorder(
@@ -145,6 +166,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     key: _formKey,
                     child: Column(
                       children: [
+                        // Email
                         TextFormField(
                           controller: _emailController,
                           keyboardType: TextInputType.emailAddress,
@@ -164,6 +186,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           },
                         ),
                         const SizedBox(height: 20),
+
+                        // Password
                         TextFormField(
                           controller: _passwordController,
                           obscureText: !_isPasswordVisible,
@@ -193,7 +217,10 @@ class _LoginScreenState extends State<LoginScreen> {
                             return null;
                           },
                         ),
+
                         const SizedBox(height: 24),
+
+                        // Login button
                         SizedBox(
                           width: double.infinity,
                           height: 50,
@@ -201,7 +228,8 @@ class _LoginScreenState extends State<LoginScreen> {
                             onPressed: _isLoading ? null : _login,
                             child: _isLoading
                                 ? const CircularProgressIndicator(
-                                    valueColor: AlwaysStoppedAnimation(Colors.white),
+                                    valueColor:
+                                        AlwaysStoppedAnimation(Colors.white),
                                   )
                                 : const Text(
                                     'Sign In',
@@ -212,13 +240,17 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ),
                           ),
                         ),
+
                         const SizedBox(height: 16),
+
+                        // Forgot Password
                         TextButton(
                           onPressed: () {
-                            // TODO: Implement forgot password
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Forgot password feature coming soon'),
+                                content: Text(
+                                  'Forgot password feature coming soon',
+                                ),
                               ),
                             );
                           },
@@ -229,7 +261,10 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ),
               ),
+
               const SizedBox(height: 20),
+
+              // Sign Up
               Row(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
@@ -237,17 +272,8 @@ class _LoginScreenState extends State<LoginScreen> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        PageRouteBuilder(
-                          pageBuilder: (context, animation, secondaryAnimation) =>
-                              const SignupScreen(),
-                          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-                            return SlideTransition(
-                              position: animation.drive(
-                                Tween(begin: const Offset(1.0, 0.0), end: Offset.zero),
-                              ),
-                              child: child,
-                            );
-                          },
+                        MaterialPageRoute(
+                          builder: (_) => const SignupScreen(),
                         ),
                       );
                     },
@@ -258,24 +284,11 @@ class _LoginScreenState extends State<LoginScreen> {
                   ),
                 ],
               ),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      const Text("Are you a doctor?"),
-                      TextButton(
-                        onPressed: () {
-                          Navigator.of(context).push(
-                            MaterialPageRoute(builder: (_) => const DoctorLoginScreen()),
-                          );
-                        },
-                        child: const Text(
-                          'Doctor Login',
-                          style: TextStyle(fontWeight: FontWeight.w600),
-                        ),
-                      ),
-                    ],
-                  ),
+
+
               const SizedBox(height: 25),
+
+              // Social login placeholder
               const Center(
                 child: Text(
                   'Social login coming soon',
@@ -292,4 +305,3 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 }
-

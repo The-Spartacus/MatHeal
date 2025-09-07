@@ -2,9 +2,9 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../services/doctor_service.dart';
+import '../../services/firestore_service.dart';
 import '../../models/appointment_model.dart';
-import '../../models/doctor_model.dart';
+import '../../models/user_model.dart';
 
 class UserAppointmentsScreen extends StatelessWidget {
   const UserAppointmentsScreen({super.key});
@@ -36,8 +36,8 @@ class UserAppointmentsScreen extends StatelessWidget {
             itemBuilder: (context, index) {
               final a = appointments[index];
 
-              return FutureBuilder<Doctor?>(
-                future: DoctorService().getDoctorById(a.doctorId),
+              return FutureBuilder<UserModel?>(
+                future: FirestoreService().getDoctorById(a.doctorId),
                 builder: (context, docSnap) {
                   final doctor = docSnap.data;
 
@@ -48,8 +48,8 @@ class UserAppointmentsScreen extends StatelessWidget {
                       title: Text(doctor?.name ?? "Doctor"),
                       subtitle: Text(
                         doctor != null
-                            ? "${doctor.specialization} at ${doctor.hospitalName}\n${a.dateTime}"
-                            : a.dateTime.toString(),
+                            ? "${doctor.specialization ?? 'Specialization'} at ${doctor.hospitalName ?? 'Hospital'}\n${a.dateTime.toLocal().toString().substring(0,16)}"
+                            : a.dateTime.toLocal().toString().substring(0,16),
                       ),
                       trailing: Text(
                         a.status,

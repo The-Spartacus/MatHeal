@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
-import '../../models/doctor_model.dart';
+import '../../models/user_model.dart'; // ✅ UserModel instead of Doctor
 import '../../models/appointment_model.dart';
-import '../../services/doctor_service.dart';
+import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
@@ -16,7 +16,7 @@ class BookAppointmentScreen extends StatefulWidget {
 }
 
 class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
-  Doctor? _selectedDoctor;
+  UserModel? _selectedDoctor;
   DateTime? _selectedDateTime;
   final _notesController = TextEditingController();
 
@@ -63,7 +63,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     final appointment = Appointment(
       id: "",
       userId: userId,
-      doctorId: _selectedDoctor!.id,
+      doctorId: _selectedDoctor!.uid,
       dateTime: _selectedDateTime!,
       status: "pending",
       notes: _notesController.text,
@@ -71,13 +71,14 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
     final docRef = FirebaseFirestore.instance.collection("appointments").doc();
     await docRef.set(appointment.toFirestore());
-    
+
     // 🔔 Schedule reminder
     await NotificationService.scheduleAppointment(
       id: docRef.id.hashCode,
       title: "Doctor Appointment",
-      body: "You have an appointment with ${_selectedDoctor!.name} at ${DateFormat('hh:mm a, dd MMM').format(_selectedDateTime!)}",
-      scheduledDate: _selectedDateTime!.subtract(const Duration(minutes: 30)), // 30 min before
+      body:
+          "You have an appointment with ${_selectedDoctor!.name} at ${DateFormat('hh:mm a, dd MMM').format(_selectedDateTime!)}",
+      scheduledDate: _selectedDateTime!.subtract(const Duration(minutes: 30)),
     );
 
     if (mounted) {
@@ -92,63 +93,62 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text("Book Appointment")),
-body: SingleChildScrollView(
-  padding: const EdgeInsets.all(16),
-  child: Column(
-    crossAxisAlignment: CrossAxisAlignment.start,
-    children: [
-      FutureBuilder<List<Doctor>>(
-        future: DoctorService().getAllDoctors(),
-        builder: (context, snapshot) {
-          if (!snapshot.hasData) return const CircularProgressIndicator();
-          final doctors = snapshot.data!;
-          return DropdownButtonFormField<Doctor>(
-            decoration: const InputDecoration(labelText: "Select Doctor"),
-            value: _selectedDoctor != null && doctors.contains(_selectedDoctor)
-                ? _selectedDoctor
-                : null,
-            items: doctors.map((doc) {
-              return DropdownMenuItem(
-                value: doc,
-                child: Text("${doc.name} - ${doc.specialization}"),
-              );
-            }).toList(),
-            onChanged: (val) => setState(() => _selectedDoctor = val),
-          );
-        },
-      ),
-      const SizedBox(height: 20),
-      ListTile(
-        title: Text(
-          _selectedDateTime != null
-              ? DateFormat('dd MMM yyyy, hh:mm a').format(_selectedDateTime!)
-              : "Select Date & Time",
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            FutureBuilder<List<UserModel>>(
+              future:FirestoreService().getAllDoctors(), // returns List<UserModel>
+              builder: (context, snapshot) {
+                if (!snapshot.hasData) return const CircularProgressIndicator();
+                final doctors = snapshot.data!;
+                return DropdownButtonFormField<UserModel>(
+                  decoration: const InputDecoration(labelText: "Select Doctor"),
+                  value: _selectedDoctor != null && doctors.contains(_selectedDoctor)
+                      ? _selectedDoctor
+                      : null,
+                  items: doctors.map((doc) {
+                    return DropdownMenuItem(
+                      value: doc,
+                      child: Text("${doc.name} - ${doc.specialization ?? 'N/A'}"),
+                    );
+                  }).toList(),
+                  onChanged: (val) => setState(() => _selectedDoctor = val),
+                );
+              },
+            ),
+            const SizedBox(height: 20),
+            ListTile(
+              title: Text(
+                _selectedDateTime != null
+                    ? DateFormat('dd MMM yyyy, hh:mm a').format(_selectedDateTime!)
+                    : "Select Date & Time",
+              ),
+              trailing: const Icon(Icons.calendar_today),
+              onTap: _pickDateTime,
+            ),
+            const SizedBox(height: 20),
+            TextField(
+              controller: _notesController,
+              decoration: const InputDecoration(
+                labelText: "Notes (optional)",
+                border: OutlineInputBorder(),
+              ),
+              maxLines: 2,
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton.icon(
+              onPressed: _bookAppointment,
+              icon: const Icon(Icons.check),
+              label: const Text("Book Appointment"),
+              style: ElevatedButton.styleFrom(
+                minimumSize: const Size.fromHeight(50),
+              ),
+            ),
+          ],
         ),
-        trailing: const Icon(Icons.calendar_today),
-        onTap: _pickDateTime,
       ),
-      const SizedBox(height: 20),
-      TextField(
-        controller: _notesController,
-        decoration: const InputDecoration(
-          labelText: "Notes (optional)",
-          border: OutlineInputBorder(),
-        ),
-        maxLines: 2,
-      ),
-      const SizedBox(height: 20),
-      ElevatedButton.icon(
-        onPressed: _bookAppointment,
-        icon: const Icon(Icons.check),
-        label: const Text("Book Appointment"),
-        style: ElevatedButton.styleFrom(
-          minimumSize: const Size.fromHeight(50),
-        ),
-      ),
-    ],
-  ),
-),
-
     );
   }
 }

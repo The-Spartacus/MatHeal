@@ -5,7 +5,7 @@ import '../models/user_model.dart';
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
 
-  // User operations
+  // ---------------- USER OPERATIONS ----------------
   Future<void> createUser(UserModel user) async {
     await _db.collection('users').doc(user.uid).set(user.toFirestore());
   }
@@ -18,12 +18,28 @@ class FirestoreService {
     return null;
   }
 
-  // Profile operations
+  // ---------------- DOCTOR OPERATIONS ----------------
+  Future<List<UserModel>> getAllDoctors() async {
+    final snapshot =
+        await _db.collection("users").where("role", isEqualTo: "doctor").get();
+
+    return snapshot.docs
+        .map((doc) => UserModel.fromFirestore(doc.data()!))
+        .toList();
+  }
+
+  Future<UserModel?> getDoctorById(String doctorId) async {
+    final doc = await _db.collection("users").doc(doctorId).get();
+    if (!doc.exists || doc.data() == null) return null;
+    return UserModel.fromFirestore(doc.data()!);
+  }
+
+  // ---------------- PROFILE OPERATIONS ----------------
   Future<void> createOrUpdateProfile(UserProfile profile) async {
     await _db.collection('profiles').doc(profile.uid).set(
-      profile.toFirestore(),
-      SetOptions(merge: true),
-    );
+          profile.toFirestore(),
+          SetOptions(merge: true),
+        );
   }
 
   Future<UserProfile?> getProfile(String uid) async {
@@ -34,9 +50,10 @@ class FirestoreService {
     return null;
   }
 
-  // Reminder operations
+  // ---------------- REMINDER OPERATIONS ----------------
   Future<String> addReminder(ReminderModel reminder) async {
-    final docRef = await _db.collection('reminders').add(reminder.toFirestore());
+    final docRef =
+        await _db.collection('reminders').add(reminder.toFirestore());
     return docRef.id;
   }
 
@@ -59,7 +76,7 @@ class FirestoreService {
             .toList());
   }
 
-  // Consumed medicines operations
+  // ---------------- CONSUMED MEDICINES ----------------
   Future<void> addConsumedMedicine(ConsumedMedicine medicine) async {
     await _db.collection('consumed_medicines').add(medicine.toFirestore());
   }

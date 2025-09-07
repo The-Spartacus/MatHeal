@@ -1,6 +1,8 @@
+// lib/screens/splash_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
+import 'package:matheal/screens/features/doctor_home_screen.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'onboarding_screen.dart';
 import 'home_screen.dart';
@@ -36,32 +38,47 @@ class _SplashScreenState extends State<SplashScreen>
 
     // Logo fades in & slides from top
     _fadeLogo = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.5, curve: Curves.easeIn)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeIn),
+      ),
     );
     _logoSlide = Tween<Offset>(
-      begin: const Offset(0, -1), // from top
+      begin: const Offset(0, -1),
       end: Offset.zero,
     ).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.0, 0.5, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.0, 0.5, curve: Curves.easeOut),
+      ),
     );
 
     // Text fades in & slides from bottom
     _fadeText = Tween<double>(begin: 0, end: 1).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.3, 0.7, curve: Curves.easeIn)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.3, 0.7, curve: Curves.easeIn),
+      ),
     );
     _textSlide = Tween<Offset>(
-      begin: const Offset(0, 1), // from bottom
+      begin: const Offset(0, 1),
       end: Offset.zero,
     ).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.3, 0.7, curve: Curves.easeOut)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.3, 0.7, curve: Curves.easeOut),
+      ),
     );
 
     // Whole screen slides upward at the end
     _screenSlide = Tween<Offset>(
       begin: Offset.zero,
-      end: const Offset(0, -1), // slide screen up
+      end: const Offset(0, -1),
     ).animate(
-      CurvedAnimation(parent: _controller, curve: const Interval(0.7, 1.0, curve: Curves.easeInOut)),
+      CurvedAnimation(
+        parent: _controller,
+        curve: const Interval(0.7, 1.0, curve: Curves.easeInOut),
+      ),
     );
 
     _controller.forward();
@@ -69,7 +86,7 @@ class _SplashScreenState extends State<SplashScreen>
   }
 
   Future<void> _checkAuthAndNavigate() async {
-    await Future.delayed(const Duration(seconds: 4)); // match animation duration
+    await Future.delayed(const Duration(seconds: 4)); // match animation
 
     if (!mounted) return;
 
@@ -85,14 +102,31 @@ class _SplashScreenState extends State<SplashScreen>
         final userModel = await firestoreService.getUser(firebaseUser.uid);
         final userProfile = await firestoreService.getProfile(firebaseUser.uid);
 
+        if (userModel == null) {
+          // If no user found in Firestore, log out and go to login
+          await context.read<AuthService>().signOut();
+          if (mounted) {
+            Navigator.of(context).pushReplacement(
+              _createRoute(const LoginScreen()),
+            );
+          }
+          return;
+        }
+
+        // set providers
         userProvider.setUser(userModel);
         userProvider.setProfile(userProfile);
 
-        if (mounted) {
-          Navigator.of(context).pushReplacement(
-            _createRoute(const HomeScreen()),
-          );
-        }
+if (mounted) {
+  Navigator.of(context).pushReplacement(
+    _createRoute(
+      userModel.role == "doctor"
+          ? DoctorHomeScreen(doctor: userModel) // pass the UserModel instance
+          : const HomeScreen(),
+    ),
+  );
+}
+
       } catch (e) {
         if (mounted) {
           await context.read<AuthService>().signOut();
@@ -102,6 +136,7 @@ class _SplashScreenState extends State<SplashScreen>
         }
       }
     } else {
+      // Not logged in
       if (hasSeenOnboarding) {
         Navigator.of(context).pushReplacement(
           _createRoute(const LoginScreen()),
@@ -118,10 +153,7 @@ class _SplashScreenState extends State<SplashScreen>
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => page,
       transitionsBuilder: (context, animation, secondaryAnimation, child) {
-        return FadeTransition(
-          opacity: animation,
-          child: child,
-        );
+        return FadeTransition(opacity: animation, child: child);
       },
     );
   }
@@ -136,17 +168,13 @@ class _SplashScreenState extends State<SplashScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       body: SlideTransition(
-        position: _screenSlide, // whole screen slides up
+        position: _screenSlide,
         child: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
-              colors: [
-                Colors.white,
-                Colors.white,
-                Colors.white,
-              ],
+              colors: [Colors.white, Colors.white, Colors.white],
             ),
           ),
           child: Center(
@@ -157,7 +185,7 @@ class _SplashScreenState extends State<SplashScreen>
                   opacity: _fadeLogo,
                   child: SlideTransition(
                     position: _logoSlide,
-                    child: Container(
+                    child: SizedBox(
                       width: 225,
                       height: 225,
                       child: Image.asset(
