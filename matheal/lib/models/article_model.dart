@@ -40,4 +40,6 @@ class Article {
       'datePublished': Timestamp.fromDate(datePublished),
     };
   }
+
+  static fromFirestore(Map<String, dynamic> data, String id) {}
 }
