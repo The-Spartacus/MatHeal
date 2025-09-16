@@ -22,7 +22,7 @@ class ChatService {
           'Authorization': 'Bearer $apiKey',
         },
         body: jsonEncode({
-          'model': 'gpt-5', // safer to test than gpt-4o-mini
+          'model': 'gpt-o3', // safer to test than gpt-4o-mini
           'messages': [
             {
               'role': 'system',

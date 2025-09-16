@@ -7,7 +7,8 @@ class UserModel {
   final String email;
   final DateTime createdAt;
   final String role; // "user" or "doctor"
-  final DoctorProfile? doctorProfile; // 👈 present only if doctor
+  final DoctorProfile? doctorProfile;
+// 👈 present only if doctor
 
   UserModel({
     required this.uid,
@@ -30,10 +31,8 @@ class UserModel {
           : null,
     );
   }
-
-  get specialization => null;
-
-  get hospitalName => null;
+  String? get specialization => doctorProfile?.specialization;
+  String? get hospitalName => doctorProfile?.hospitalName;
 
   Map<String, dynamic> toFirestore() {
     return {

@@ -109,6 +109,12 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   }
 
   Future<void> _bookAppointment(UserModel doctor) async {
+      if (_selectedDateTime == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text("Please select date and time")),
+    );
+    return;
+  }
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
     final appointment = Appointment(

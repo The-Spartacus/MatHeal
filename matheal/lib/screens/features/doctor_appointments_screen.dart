@@ -62,12 +62,13 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                   doc.data() as Map<String, dynamic>, doc.id))
               .toList();
 
-          // Upcoming: not cancelled and in the future
+          // Upcoming
           final upcoming = appointments
-              .where((a) => a.status != "cancelled" && a.dateTime.isAfter(now))
+              .where((a) =>
+                  a.status != "cancelled" && a.dateTime.isAfter(now))
               .toList();
 
-          // History: cancelled OR confirmed in the past
+          // History
           final history = appointments
               .where((a) =>
                   a.status == "cancelled" ||
@@ -104,7 +105,6 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
         final formattedDate =
             DateFormat('dd MMM yyyy, hh:mm a').format(a.dateTime.toLocal());
 
-        // subtle grey background for cancelled appointments
         final bool isCancelled = a.status == 'cancelled';
         final cardColor = isCancelled ? Colors.grey[100] : null;
 
@@ -118,7 +118,7 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Left: expanded details (prevents cut off)
+                // Left: appointment details
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -131,15 +131,15 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                       const SizedBox(height: 6),
                       Text(
                         "Date: $formattedDate",
-                        style:
-                            const TextStyle(fontSize: 14, color: Colors.black87),
+                        style: const TextStyle(
+                            fontSize: 14, color: Colors.black87),
                       ),
                       const SizedBox(height: 6),
                       if (a.notes.isNotEmpty)
                         Text(
                           "Notes: ${a.notes}",
-                          style:
-                              const TextStyle(fontSize: 14, color: Colors.black87),
+                          style: const TextStyle(
+                              fontSize: 14, color: Colors.black87),
                           softWrap: true,
                         ),
                       const SizedBox(height: 6),
@@ -150,14 +150,15 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                           fontWeight: FontWeight.w600,
                           color: a.status == 'confirmed'
                               ? Colors.green
-                              : (a.status == 'cancelled' ? Colors.red : Colors.orange),
+                              : (a.status == 'cancelled'
+                                  ? Colors.red
+                                  : Colors.orange),
                         ),
                       ),
                     ],
                   ),
                 ),
 
-                // Right: action buttons (fixed width so left can use remaining space)
                 const SizedBox(width: 12),
                 SizedBox(
                   width: 120,
@@ -177,16 +178,21 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                       : Column(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            // If pending -> show Confirm + Cancel
+                            // If pending -> Confirm + Cancel
                             if (a.status == "pending") ...[
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    FirebaseFirestore.instance
+                                  onPressed: () async {
+                                    await FirebaseFirestore.instance
                                         .collection("appointments")
                                         .doc(a.id)
                                         .update({"status": "confirmed"});
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              "Appointment confirmed ✅")),
+                                    );
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.green,
@@ -199,11 +205,16 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    FirebaseFirestore.instance
+                                  onPressed: () async {
+                                    await FirebaseFirestore.instance
                                         .collection("appointments")
                                         .doc(a.id)
                                         .update({"status": "cancelled"});
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              "Appointment cancelled ❌")),
+                                    );
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.red,
@@ -214,15 +225,20 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                               ),
                             ] else if (a.status == "confirmed" &&
                                 a.dateTime.isAfter(DateTime.now())) ...[
-                              // confirmed but still upcoming -> only Cancel
+                              // upcoming confirmed -> only Cancel
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
-                                  onPressed: () {
-                                    FirebaseFirestore.instance
+                                  onPressed: () async {
+                                    await FirebaseFirestore.instance
                                         .collection("appointments")
                                         .doc(a.id)
                                         .update({"status": "cancelled"});
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                          content: Text(
+                                              "Appointment cancelled ❌")),
+                                    );
                                   },
                                   style: ElevatedButton.styleFrom(
                                     backgroundColor: Colors.red,
@@ -232,7 +248,6 @@ class _DoctorAppointmentsScreenState extends State<DoctorAppointmentsScreen> {
                                 ),
                               ),
                             ] else ...[
-                              // fallback (shouldn't normally hit)
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
