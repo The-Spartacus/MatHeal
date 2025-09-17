@@ -4,11 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:provider/provider.dart';
-import '../models/user_model.dart';
-import '../providers/user_provider.dart';
-import '../services/firestore_service.dart';
-import '../services/image_upload_service.dart';
-import '../utils/theme.dart';
+import '../../models/user_model.dart';
+
+import '../../providers/user_provider.dart';
+
+import '../../services/firestore_service.dart';
+
+import '../../services/image_upload_service.dart';
+
+import '../../utils/theme.dart';
+
 
 class DoctorProfileScreen extends StatefulWidget {
   final UserModel doctor;
@@ -51,20 +56,14 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
       );
 
       if (image != null) {
-        debugPrint("Image picked, starting upload...");
         final imageUrl = await ImageUploadService().uploadImage(File(image.path));
-        debugPrint("Image uploaded successfully. URL: $imageUrl");
         await _saveProfile(newAvatarUrl: imageUrl);
-        HapticFeedback.lightImpact();
         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Profile picture updated!'),
           backgroundColor: AppColors.success,
         ));
-      } else {
-        debugPrint("Image picking cancelled.");
       }
     } catch (e) {
-      debugPrint("Error during image upload: $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Error updating image: $e'),
         backgroundColor: AppColors.error,
@@ -82,15 +81,15 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
       final userProvider = context.read<UserProvider>();
       final firestoreService = context.read<FirestoreService>();
       
+      // Get the most current user data from the provider
       final currentUser = userProvider.user;
       if (currentUser == null) throw Exception("User not found");
 
-      debugPrint("Saving profile. New avatar URL: $newAvatarUrl");
-
+      // Update the DoctorProfile using the latest data from the provider
       final updatedDoctorProfile = currentUser.doctorProfile?.copyWith(
             specialization: _specializationController.text,
             hospitalName: _hospitalController.text,
-            avatarUrl: newAvatarUrl ?? currentUser.avatarUrl,
+            avatarUrl: newAvatarUrl ?? currentUser.avatarUrl, // Use provider's avatarUrl as fallback
           ) ??
           DoctorProfile(
             specialization: _specializationController.text,
@@ -99,21 +98,16 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
           );
 
       await firestoreService.updateDoctorProfile(currentUser.uid, updatedDoctorProfile);
-      debugPrint("Firestore updated with new profile.");
 
+      // Create a new UserModel with the updated DoctorProfile and set it in the provider
       final updatedUser = currentUser.copyWith(doctorProfile: updatedDoctorProfile);
       userProvider.setUser(updatedUser);
-      debugPrint("UserProvider state updated.");
 
-      HapticFeedback.lightImpact();
-      if (newAvatarUrl == null) { // Only show this snackbar for text edits
-        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Profile updated successfully!'),
-          backgroundColor: AppColors.success,
-        ));
-      }
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+        content: Text('Profile updated successfully!'),
+        backgroundColor: AppColors.success,
+      ));
     } catch (e) {
-      debugPrint("Error saving profile: $e");
       ScaffoldMessenger.of(context).showSnackBar(SnackBar(
         content: Text('Error saving profile: $e'),
         backgroundColor: AppColors.error,
@@ -130,7 +124,7 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
         title: const Text('Edit Doctor Profile'),
         actions: [
           TextButton(
-            onPressed: (_isLoading || _isUploading) ? null : () => _saveProfile(),
+            onPressed: _isLoading ? null : () => _saveProfile(),
             child: _isLoading
                 ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
                 : const Text('Save'),
@@ -154,24 +148,22 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
   }
 
   Widget _buildAvatar() {
+    // Using a Consumer to get the latest profile data from the provider
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
-      final currentDoctor = userProvider.user;
-      final avatarUrl = currentDoctor?.avatarUrl;
-
+      final currentDoctor = userProvider.user; // Get the most up-to-date doctor model
       return Center(
         child: Stack(
           children: [
             CircleAvatar(
               radius: 50,
               backgroundColor: AppColors.primary.withOpacity(0.1),
-              // ✅ Key added here to force UI refresh when URL changes
-              backgroundImage: avatarUrl != null
-                  ? NetworkImage(avatarUrl) as ImageProvider<Object>?
+              backgroundImage: currentDoctor?.avatarUrl != null
+                  ? NetworkImage(currentDoctor!.avatarUrl!)
                   : null,
               child: (_isUploading)
-                  ? const CircularProgressIndicator(color: AppColors.primary)
-                  : (avatarUrl == null
+                  ? const CircularProgressIndicator()
+                  : (currentDoctor?.avatarUrl == null
                       ? const Icon(Icons.medical_services, size: 50, color: AppColors.primary)
                       : null),
             ),
@@ -222,3 +214,4 @@ class _DoctorProfileScreenState extends State<DoctorProfileScreen> {
     );
   }
 }
+

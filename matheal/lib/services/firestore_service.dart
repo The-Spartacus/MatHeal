@@ -1,4 +1,3 @@
-// lib/services/firestore_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/user_model.dart';
 
@@ -34,7 +33,14 @@ class FirestoreService {
     return UserModel.fromFirestore(doc.data()!);
   }
 
-  // ---------------- PROFILE OPERATIONS ----------------
+  /// Updates the DoctorProfile sub-collection within a user document.
+  Future<void> updateDoctorProfile(String uid, DoctorProfile profile) async {
+    await _db.collection('users').doc(uid).update({
+      'doctorProfile': profile.toFirestore(),
+    });
+  }
+
+  // ---------------- PROFILE OPERATIONS (for regular users) ----------------
   Future<void> createOrUpdateProfile(UserProfile profile) async {
     await _db.collection('profiles').doc(profile.uid).set(
           profile.toFirestore(),

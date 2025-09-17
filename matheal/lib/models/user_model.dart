@@ -33,6 +33,8 @@ class UserModel {
   }
   String? get specialization => doctorProfile?.specialization;
   String? get hospitalName => doctorProfile?.hospitalName;
+  // Getter for doctor's avatar
+  String? get avatarUrl => doctorProfile?.avatarUrl;
 
   Map<String, dynamic> toFirestore() {
     return {
@@ -64,14 +66,16 @@ class UserModel {
   }
 }
 
-/// ---------------- DOCTOR PROFILE ----------------
+/// ---------------- DOCTOR PROFILE (UPDATED) ----------------
 class DoctorProfile {
   final String specialization;
   final String hospitalName;
+  final String? avatarUrl; // ✅ ADDED
 
   DoctorProfile({
     required this.specialization,
     required this.hospitalName,
+    this.avatarUrl, // ✅ ADDED
   });
 
   factory DoctorProfile.fromFirestore(Map<String, dynamic>? data) {
@@ -81,6 +85,7 @@ class DoctorProfile {
     return DoctorProfile(
       specialization: data['specialization'] ?? '',
       hospitalName: data['hospitalName'] ?? '',
+      avatarUrl: data['avatarUrl'], // ✅ ADDED
     );
   }
 
@@ -88,9 +93,23 @@ class DoctorProfile {
     return {
       'specialization': specialization,
       'hospitalName': hospitalName,
+      'avatarUrl': avatarUrl, // ✅ ADDED
     };
   }
+
+  DoctorProfile copyWith({ // ✅ ADDED copyWith for easier updates
+    String? specialization,
+    String? hospitalName,
+    String? avatarUrl,
+  }) {
+    return DoctorProfile(
+      specialization: specialization ?? this.specialization,
+      hospitalName: hospitalName ?? this.hospitalName,
+      avatarUrl: avatarUrl ?? this.avatarUrl,
+    );
+  }
 }
+
 
 /// ---------------- USER PROFILE ----------------
 class UserProfile {
@@ -228,3 +247,4 @@ class ConsumedMedicine {
     };
   }
 }
+

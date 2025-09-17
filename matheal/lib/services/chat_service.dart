@@ -3,60 +3,61 @@ import 'package:http/http.dart' as http;
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ChatService {
-  static const String _baseUrl = 'https://api.openai.com/v1/chat/completions';
+  // ✅ Updated model and base URL for Gemini
+  static const String _model = 'gemini-1.5-flash-latest';
+  static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent';
 
   Future<String> sendMessage(String message) async {
     try {
-      final apiKey = dotenv.env['OPENAI_API_KEY'];
+      // ✅ Updated to use GEMINI_API_KEY
+      final apiKey = dotenv.env['GEMINI_API_KEY'];
 
       if (apiKey == null || apiKey.isEmpty) {
-        throw Exception("❌ OPENAI_API_KEY not found in .env");
+        throw Exception("❌ GEMINI_API_KEY not found in .env");
       }
 
-      print("🔑 API Key loaded: ${apiKey.isNotEmpty}");
+      final url = '$_baseUrl?key=$apiKey';
+      
+      print("📡 Sending request to Gemini...");
 
       final response = await http.post(
-        Uri.parse(_baseUrl),
+        Uri.parse(url),
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': 'Bearer $apiKey',
         },
+        // ✅ Updated body structure for Gemini API
         body: jsonEncode({
-          'model': 'gpt-o3', // safer to test than gpt-4o-mini
-          'messages': [
+          'contents': [
             {
-              'role': 'system',
-              'content':
-                  'You are a maternal health assistant. Give safe, conservative tips and always recommend consulting a doctor for severe issues.',
-            },
-            {
-              'role': 'user',
-              'content': message,
-            },
+              'parts': [
+                {'text': message}
+              ]
+            }
           ],
-          'max_tokens': 500,
-          'temperature': 0.7,
+          'systemInstruction': {
+            'parts': [
+              {
+                'text':
+                    'You are a maternal health assistant. Give safe, conservative tips and always recommend consulting a doctor for severe issues.',
+              }
+            ]
+          },
+          'generationConfig': {
+            'temperature': 0.7,
+            'maxOutputTokens': 500,
+          }
         }),
       );
-
-      print("📡 Response code: ${response.statusCode}");
+      
       print("📩 Response body: ${response.body}");
 
       if (response.statusCode == 200) {
         final data = jsonDecode(response.body);
-        return data['choices'][0]['message']['content'].toString().trim();
+        // ✅ Updated response parsing for Gemini
+        return data['candidates'][0]['content']['parts'][0]['text'].toString().trim();
       } else {
         final errorData = jsonDecode(response.body);
-
-        // Special handling for quota issue (429)
-        if (response.statusCode == 429 &&
-            errorData['error']?['code'] == 'insufficient_quota') {
-          return "⚠️ Your API quota has been exceeded. Please check your OpenAI billing or use a different API key.";
-        }
-
-        // Other errors
-        final errorMessage = errorData['error']?['message'] ??
-            "Unknown error occurred (${response.statusCode}).";
+        final errorMessage = errorData['error']?['message'] ?? "Unknown API error occurred (${response.statusCode}).";
         return "❌ API Error: $errorMessage";
       }
     } catch (e) {

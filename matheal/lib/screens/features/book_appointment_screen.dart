@@ -7,6 +7,7 @@ import '../../models/user_model.dart';
 import '../../models/appointment_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
+import '../../utils/theme.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   const BookAppointmentScreen({super.key});
@@ -129,12 +130,13 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     final docRef = FirebaseFirestore.instance.collection("appointments").doc();
     await docRef.set(appointment.toFirestore());
 
+    // Schedule the notification for one day before the appointment
     await NotificationService.scheduleAppointment(
       id: docRef.id.hashCode,
-      title: "Doctor Appointment",
+      title: "Appointment Reminder",
       body:
-          "You have an appointment with Dr. ${doctor.name} at ${DateFormat('hh:mm a, dd MMM').format(_selectedDateTime!)}",
-      scheduledDate: _selectedDateTime!.subtract(const Duration(minutes: 30)),
+          "Your appointment with Dr. ${doctor.name} is tomorrow at ${DateFormat('hh:mm a').format(_selectedDateTime!)}",
+      scheduledDate: _selectedDateTime!.subtract(const Duration(days: 1)),
     );
 
     if (mounted) {
@@ -178,7 +180,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       ),
       body: Column(
         children: [
-          // 🔍 Search bar
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: TextField(
@@ -206,7 +207,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 }
                 var doctors = snapshot.data!;
 
-                // Apply filter
                 if (_filterSpecialization != null) {
                   doctors = doctors
                       .where((d) => d.specialization == _filterSpecialization)
@@ -218,7 +218,6 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                       .toList();
                 }
 
-                // Apply search
                 if (_searchQuery.isNotEmpty) {
                   doctors = doctors.where((d) {
                     final name = d.name.toLowerCase();
@@ -239,29 +238,98 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   itemCount: doctors.length,
                   itemBuilder: (context, index) {
                     final doc = doctors[index];
-                    return Card(
+                    return Container(
+                      height: 120,
                       margin: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: ListTile(
-                        contentPadding: const EdgeInsets.all(16),
-                        title: Text(
-                          "Dr. ${doc.name}",
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        subtitle: Text(
-                          "${doc.specialization ?? "Specialization not set"}\n"
-                          "${doc.hospitalName ?? "Hospital not set"}",
-                          style: const TextStyle(fontSize: 14, color: Colors.grey),
-                        ),
-                        trailing: IconButton(
-                          icon: const Icon(Icons.add_circle,
-                              color: Colors.blue, size: 32),
-                          onPressed: () => _pickDateTimeAndBook(doc),
+                      child: GestureDetector(
+                        onTap: () => _pickDateTimeAndBook(doc),
+                        child: Stack(
+                          children: [
+                            Card(
+                              elevation: 4,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              clipBehavior: Clip.antiAlias,
+                              child: Container(
+                                decoration: const BoxDecoration(
+                                  gradient: LinearGradient(
+                                    colors: [Color(0xFF2C3E50), Color(0xFF1B2631)],
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            Positioned.fill(
+                              right: 110,
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                  children: [
+                                    Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Dr. ${doc.name}",
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 18,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          doc.specialization ?? "Specialization not set",
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(0.8),
+                                            fontSize: 14,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ],
+                                    ),
+                                    Row(
+                                      children: [
+                                        Icon(Icons.local_hospital, color: Colors.white.withOpacity(0.7), size: 14),
+                                        const SizedBox(width: 4),
+                                        Expanded(
+                                          child: Text(
+                                            doc.hospitalName ?? "Hospital not set",
+                                            style: TextStyle(
+                                              color: Colors.white.withOpacity(0.7),
+                                              fontSize: 12,
+                                            ),
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
+                            Positioned(
+                              right: 16,
+                              top: 0,
+                              bottom: 0,
+                              child: Center(
+                                child: CircleAvatar(
+                                  radius: 45,
+                                  backgroundColor: Colors.white.withOpacity(0.2),
+                                  backgroundImage: doc.avatarUrl != null
+                                      ? NetworkImage(doc.avatarUrl!)
+                                      : null,
+                                  child: doc.avatarUrl == null
+                                      ? const Icon(Icons.person, size: 45, color: Colors.white70)
+                                      : null,
+                                ),
+                              ),
+                            ),
+                          ],
                         ),
                       ),
                     );
@@ -275,3 +343,4 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
   }
 }
+

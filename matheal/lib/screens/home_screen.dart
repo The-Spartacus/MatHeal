@@ -5,6 +5,7 @@ import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:matheal/screens/features/book_appointment_screen.dart';
 import 'package:matheal/screens/features/user_appointments_screen.dart';
 import 'package:matheal/services/auth_service.dart';
+import 'package:matheal/services/firestore_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'package:provider/provider.dart';
@@ -30,8 +31,7 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _isDarkMode = false;
-    bool _notificationsEnabled = true;
-
+  bool _notificationsEnabled = true;
 
   // Screens for each bottom nav tab
   late final List<Widget> _screens = [
@@ -46,7 +46,8 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
     });
   }
-    void initState() {
+  @override
+  void initState() {
     super.initState();
     _loadPreferences();
   }
@@ -67,6 +68,11 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget _buildHomeTab() {
     return RefreshIndicator(
       onRefresh: () async {
+        // You can add logic here to refresh user data if needed
+        final userProvider = context.read<UserProvider>();
+        if (userProvider.user != null) {
+          await context.read<FirestoreService>().getProfile(userProvider.user!.uid);
+        }
         await Future.delayed(const Duration(seconds: 1));
       },
       child: SingleChildScrollView(
@@ -91,6 +97,7 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
+  // --- build method and navigation remains the same ---
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -153,7 +160,6 @@ class _HomeScreenState extends State<HomeScreen> {
 
       endDrawer: _buildDrawer(context), // 👉 Added Drawer
 
-
       body: _screens[_selectedIndex],
       bottomNavigationBar: BottomNavigationBar(
         type: BottomNavigationBarType.fixed,
@@ -176,196 +182,14 @@ class _HomeScreenState extends State<HomeScreen> {
             label: "AI",
           ),
           BottomNavigationBarItem(
-            icon: Icon(Icons.article ),
+            icon: Icon(Icons.article),
             label: "Articles",
           ),
         ],
       ),
     );
   }
-
-  // 👉 Drawer Widget
-Widget _buildDrawer(BuildContext context) {
-  return Drawer(
-    child: Column(
-      
-      children: [
-        // Smaller header like AppBar
-        Padding(
-          padding: const EdgeInsets.only(top: 30.0), // adjust this value as needed
-          child: Container(
-            height: kToolbarHeight, // same as AppBar height
-            width: double.infinity,
-            color: const Color.fromARGB(255, 253, 254, 255),
-            alignment: Alignment.center,
-            child: const Text(
-              'Settings',
-              style: TextStyle(
-                color: Colors.black,
-                fontSize: 18, // smaller than DrawerHeader default
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-          ),
-        ), // ✅ Comma added here
-
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(8), // smaller padding
-            children: [
-                            _buildSettingsSection(
-                'Profile',
-                [
-                  _buildProfileTile(context),
-                ],
-              ),
-              
-              // Preferences Section
-              _buildSettingsSection(
-
-                
-                'Preferences',
-                [
-                  _buildThemeToggle(),
-                  _buildNotificationToggle(),
-                ],
-              ),
-              const SizedBox(height: 16),
-
-              // Account Section
-              _buildSettingsSection(
-                'Account',
-                [
-                  _buildLogoutTile(context),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _buildProfileTile(BuildContext context) {
-  return ListTile(
-    leading: const Icon(Icons.person, color: AppColors.primary),
-    title: const Text('Profile'),
-    onTap: () {
-      Navigator.of(context).push(
-        MaterialPageRoute(builder: (context) => const ProfileScreen()),
-      );
-    },
-  );
-}
-
-
-Widget _buildSettingsSection(String title, List<Widget> children) {
-  return Card(
-    elevation: 1, // slightly lower for compactness
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), // smaller radius
-    margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0), // less vertical space
-    child: Padding(
-      padding: const EdgeInsets.all(12), // reduced padding
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            title,
-            style: const TextStyle(
-              fontSize: 14, // smaller font
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const Divider(height: 16, thickness: 1),
-          ...children,
-        ],
-      ),
-    ),
-  );
-}
-
-
-  Widget _buildThemeToggle() {
-    return Consumer<ThemeProvider>(
-      builder: (context, themeProvider, child) {
-        return SwitchListTile(
-          title: const Text('Dark Mode'),
-          subtitle: const Text('Switch between light and dark theme'),
-          value: themeProvider.isDarkMode,
-          onChanged: (_) => themeProvider.toggleTheme(),
-          secondary: Icon(
-            themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
-            color: AppColors.primary,
-          ),
-        );
-      },
-    );
-  }
-  
-
-  Widget _buildNotificationToggle() {
-    return SwitchListTile(
-      title: const Text('Notifications'),
-      subtitle: const Text('Receive health reminders and updates'),
-      value: _notificationsEnabled,
-      onChanged: (value) {
-        setState(() => _notificationsEnabled = value);
-        _saveNotificationPreference(value);
-      },
-      secondary: const Icon(
-        Icons.notifications,
-        color: AppColors.primary,
-      ),
-    );
-  }
-
-
-
-  Widget _buildLogoutTile(BuildContext context) {
-    return ListTile(
-      leading: const Icon(Icons.logout, color: AppColors.error),
-      title: const Text(
-        'Logout',
-        style: TextStyle(color: AppColors.error),
-      ),
-      onTap: () async {
-        final shouldLogout = await showDialog<bool>(
-          context: context,
-          builder: (context) => AlertDialog(
-            title: const Text('Logout'),
-            content: const Text('Are you sure you want to logout?'),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: const Text('Cancel'),
-              ),
-              ElevatedButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.error,
-                ),
-                child: const Text('Logout'),
-              ),
-            ],
-          ),
-        );
-
-        if (shouldLogout == true && context.mounted) {
-          await context.read<AuthService>().signOut();
-          context.read<UserProvider>().clear();
-
-          Navigator.of(context).pushAndRemoveUntil(
-            MaterialPageRoute(builder: (context) => const LoginScreen()),
-            (route) => false,
-          );
-        }
-      },
-    );
-  }
-  }
-
-  // --- welcome card
+  // --- welcome card (UPDATED) ---
   Widget _buildWelcomeCard() {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
@@ -469,157 +293,176 @@ Widget _buildSettingsSection(String title, List<Widget> children) {
       },
     );
   }
-
-  // --- feature grid (unchanged)
-  Widget _buildFeatureGrid(BuildContext context) {
-    final features = [
-      FeatureCard(
-        title: 'Medicine Reminders',
-        subtitle: 'Track your medications',
-        icon: Icons.medication,
-        color: const Color(0xFFE3F2FD),
-        iconColor: const Color(0xFF1976D2),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-              builder: (context) => const MedicineRemindersScreen()),
-        ),
-      ),
-      FeatureCard(
-        title: 'Consumed Medicines',
-        subtitle: 'View medication history',
-        icon: Icons.history,
-        color: const Color(0xFFF3E5F5),
-        iconColor: const Color(0xFF7B1FA2),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-              builder: (context) => const ConsumedMedicinesScreen()),
-        ),
-      ),
-      FeatureCard(
-        title: 'Doctor Appointments',
-        subtitle: 'Schedule & track visits',
-        icon: Icons.local_hospital,
-        color: const Color(0xFFE8F5E8),
-        iconColor: const Color(0xFF388E3C),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const UserAppointmentsScreen()),
-        ),
-      ),
-            FeatureCard(
-        title: 'Book Appointments',
-        subtitle: 'Schedule Appointments',
-        icon: Icons.save,
-        color: const Color(0xFFE8F5E8),
-        iconColor: const Color(0xFF388E3C),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(builder: (context) => const BookAppointmentScreen()),
-        ),
-      ),
-      FeatureCard(
-        title: 'Feeding Reminders',
-        subtitle: 'Nutrition tracking',
-        icon: Icons.restaurant,
-        color: const Color(0xFFFFF3E0),
-        iconColor: const Color(0xFFF57C00),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-              builder: (context) => const FeedingRemindersScreen()),
-        ),
-      ),
-      FeatureCard(
-        title: 'Diet Suggestions',
-        subtitle: 'Personalized nutrition',
-        icon: Icons.dining,
-        color: const Color(0xFFF1F8E9),
-        iconColor: const Color(0xFF689F38),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-              builder: (context) => const DietSuggestionsScreen()),
-        ),
-      ),
-      FeatureCard(
-        title: 'Exercise Suggestions',
-        subtitle: 'Safe workouts',
-        icon: Icons.fitness_center,
-        color: const Color(0xFFE0F2F1),
-        iconColor: const Color(0xFF00695C),
-        onTap: () => Navigator.of(context).push(
-          MaterialPageRoute(
-              builder: (context) => const ExerciseSuggestionsScreen()),
-        ),
-      )
-    ];
-
-    return GridView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-        crossAxisCount: 2,
-        childAspectRatio: 0.9,
-        crossAxisSpacing: 16,
-        mainAxisSpacing: 16,
-      ),
-      itemCount: features.length,
-      itemBuilder: (context, index) {
-        final feature = features[index];
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
+  // All other widgets (_buildDrawer, _buildFeatureGrid, etc.) remain the same.
+  // ... (Paste the rest of the unchanged widgets from your original code here)
+  Widget _buildDrawer(BuildContext context) {
+  return Drawer(
+    child: Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.only(top: 30.0),
+          child: Container(
+            height: kToolbarHeight,
+            width: double.infinity,
+            color: const Color.fromARGB(255, 253, 254, 255),
+            alignment: Alignment.center,
+            child: const Text('Settings', style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
           ),
-          child: InkWell(
-            onTap: feature.onTap,
-            borderRadius: BorderRadius.circular(16),
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Container(
-                    width: 60,
-                    height: 60,
-                    decoration: BoxDecoration(
-                      color: feature.color,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Icon(
-                      feature.icon,
-                      color: feature.iconColor,
-                      size: 32,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    feature.title,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.w600,
-                      fontSize: 14,
-                      color: AppColors.textPrimary,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    feature.subtitle,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: AppColors.textSecondary,
-                    ),
-                    textAlign: TextAlign.center,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                  ),
-                ],
-              ),
+        ),
+        Expanded(
+          child: ListView(
+            padding: const EdgeInsets.all(8),
+            children: [
+              _buildSettingsSection('Profile', [_buildProfileTile(context)]),
+              _buildSettingsSection('Preferences', [_buildThemeToggle(), _buildNotificationToggle()]),
+              const SizedBox(height: 16),
+              _buildSettingsSection('Account', [_buildLogoutTile(context)]),
+            ],
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
+Widget _buildProfileTile(BuildContext context) {
+  return ListTile(
+    leading: const Icon(Icons.person, color: AppColors.primary),
+    title: const Text('Profile'),
+    onTap: () {
+      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ProfileScreen()));
+    },
+  );
+}
+
+Widget _buildSettingsSection(String title, List<Widget> children) {
+  return Card(
+    elevation: 1,
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+    child: Padding(
+      padding: const EdgeInsets.all(12),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+          const Divider(height: 16, thickness: 1),
+          ...children,
+        ],
+      ),
+    ),
+  );
+}
+
+Widget _buildThemeToggle() {
+  return Consumer<ThemeProvider>(
+    builder: (context, themeProvider, child) {
+      return SwitchListTile(
+        title: const Text('Dark Mode'),
+        subtitle: const Text('Switch between light and dark theme'),
+        value: themeProvider.isDarkMode,
+        onChanged: (_) => themeProvider.toggleTheme(),
+        secondary: Icon(themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode, color: AppColors.primary),
+      );
+    },
+  );
+}
+
+Widget _buildNotificationToggle() {
+  return SwitchListTile(
+    title: const Text('Notifications'),
+    subtitle: const Text('Receive health reminders and updates'),
+    value: _notificationsEnabled,
+    onChanged: (value) {
+      setState(() => _notificationsEnabled = value);
+      _saveNotificationPreference(value);
+    },
+    secondary: const Icon(Icons.notifications, color: AppColors.primary),
+  );
+}
+
+Widget _buildLogoutTile(BuildContext context) {
+  return ListTile(
+    leading: const Icon(Icons.logout, color: AppColors.error),
+    title: const Text('Logout', style: TextStyle(color: AppColors.error)),
+    onTap: () async {
+      final shouldLogout = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          title: const Text('Logout'),
+          content: const Text('Are you sure you want to logout?'),
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+              child: const Text('Logout'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldLogout == true && context.mounted) {
+        await context.read<AuthService>().signOut();
+        context.read<UserProvider>().clear();
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (context) => const LoginScreen()),
+          (route) => false,
+        );
+      }
+    },
+  );
+}
+
+Widget _buildFeatureGrid(BuildContext context) {
+  final features = [
+    FeatureCard(title: 'Medicine Reminders', subtitle: 'Track your medications', icon: Icons.medication, color: const Color(0xFFE3F2FD), iconColor: const Color(0xFF1976D2), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const MedicineRemindersScreen()))),
+    FeatureCard(title: 'Consumed Medicines', subtitle: 'View medication history', icon: Icons.history, color: const Color(0xFFF3E5F5), iconColor: const Color(0xFF7B1FA2), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ConsumedMedicinesScreen()))),
+    FeatureCard(title: 'Doctor Appointments', subtitle: 'Schedule & track visits', icon: Icons.local_hospital, color: const Color(0xFFE8F5E8), iconColor: const Color(0xFF388E3C), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const UserAppointmentsScreen()))),
+    FeatureCard(title: 'Book Appointments', subtitle: 'Schedule Appointments', icon: Icons.save, color: const Color(0xFFE8F5E8), iconColor: const Color(0xFF388E3C), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const BookAppointmentScreen()))),
+    FeatureCard(title: 'Feeding Reminders', subtitle: 'Nutrition tracking', icon: Icons.restaurant, color: const Color(0xFFFFF3E0), iconColor: const Color(0xFFF57C00), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const FeedingRemindersScreen()))),
+    FeatureCard(title: 'Diet Suggestions', subtitle: 'Personalized nutrition', icon: Icons.dining, color: const Color(0xFFF1F8E9), iconColor: const Color(0xFF689F38), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const DietSuggestionsScreen()))),
+    FeatureCard(title: 'Exercise Suggestions', subtitle: 'Safe workouts', icon: Icons.fitness_center, color: const Color(0xFFE0F2F1), iconColor: const Color(0xFF00695C), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ExerciseSuggestionsScreen()))),
+  ];
+
+  return GridView.builder(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.9, crossAxisSpacing: 16, mainAxisSpacing: 16),
+    itemCount: features.length,
+    itemBuilder: (context, index) {
+      final feature = features[index];
+      return Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        child: InkWell(
+          onTap: feature.onTap,
+          borderRadius: BorderRadius.circular(16),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(
+                  width: 60, height: 60,
+                  decoration: BoxDecoration(color: feature.color, borderRadius: BorderRadius.circular(16)),
+                  child: Icon(feature.icon, color: feature.iconColor, size: 32),
+                ),
+                const SizedBox(height: 12),
+                Text(feature.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textPrimary), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                const SizedBox(height: 4),
+                Text(feature.subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+              ],
             ),
           ),
-        );
-      },
-    );
-  }
+        ),
+      );
+    },
+  );
+}
 
+
+}
 
 class FeatureCard {
   final String title;

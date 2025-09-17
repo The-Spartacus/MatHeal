@@ -20,7 +20,7 @@ class ArticleDetailScreen extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Article"),
+        title: Text(article.title),
         actions: [
           IconButton(
             icon: const Icon(Icons.share),
@@ -30,46 +30,59 @@ class ArticleDetailScreen extends StatelessWidget {
           ),
         ],
       ),
-      body: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Title
-            Text(
-              article.title,
-              style: const TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+
+              // Author + Metadata
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: CircleAvatar(
+                  backgroundImage: NetworkImage(author.avatarUrl ?? ''),
+                ),
+                title: Text("By ${author.name}", style: const TextStyle(fontWeight: FontWeight.w600)),
+                subtitle: Text("$specialization at $hospital\nPublished on ${DateFormat("MMMM dd, yyyy").format(article.datePublished)}"),
               ),
-            ),
-            const SizedBox(height: 8),
+              const Divider(height: 24),
 
-            // Author + Metadata
-            Text(
-              "By ${author.name} (${specialization.isNotEmpty ? specialization : 'Doctor'})\n$hospital",
-              style: const TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              DateFormat("MMMM dd, yyyy")
-                  .format(article.datePublished ?? DateTime.now()),
-              style: const TextStyle(fontSize: 12, color: Colors.grey),
-            ),
-            const SizedBox(height: 16),
 
-            // Content
-            Expanded(
-              child: SingleChildScrollView(
-                child: Text(
-                  article.content,
-                  style: const TextStyle(fontSize: 16, height: 1.5),
+              // Title
+              Text(
+                article.title,
+                style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
                 ),
               ),
-            ),
-          ],
+              const SizedBox(height: 8),
+
+              // ✅ Article Image (moved to the bottom)
+              if (article.imageUrl != null)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(16),
+                  child: Image.network(
+                    article.imageUrl!,
+                    height: 250,
+                    width: double.infinity,
+                    fit: BoxFit.cover,
+                  ),
+                ),
+                const SizedBox(height: 24),
+
+              // Content
+              Text(
+                article.content,
+                style: const TextStyle(fontSize: 16, height: 1.5),
+              ),
+              const SizedBox(height: 24),
+            ],
+          ),
         ),
       ),
     );
   }
 }
+
