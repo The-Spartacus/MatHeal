@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:matheal/models/chat_model.dart';
 import '../models/user_model.dart';
 
 class FirestoreService {
@@ -96,5 +97,34 @@ class FirestoreService {
         .map((snapshot) => snapshot.docs
             .map((doc) => ConsumedMedicine.fromFirestore(doc.data(), doc.id))
             .toList());
+  }
+
+  CollectionReference _getChatCollection(String userId) {
+    return _db.collection('users').doc(userId).collection('chatHistory');
+  }
+
+  /// Adds a new chat message to a user's chat history in Firestore.
+  /// The message's `userId` determines which user's history it's saved to.
+  Future<void> addChatMessage(ChatMessageModel message) async {
+    try {
+      await _getChatCollection(message.userId).add(message.toFirestore());
+    } catch (e) {
+      print("Error adding chat message to Firestore: $e");
+      rethrow; // Re-throw the error to be handled by the UI if needed
+    }
+  }
+
+  /// Retrieves a real-time stream of a user's chat history, ordered by timestamp.
+  Stream<List<ChatMessageModel>> getChatHistory(String userId) {
+    return _getChatCollection(userId)
+        .orderBy('timestamp',
+            descending: false) // Orders messages chronologically
+        .snapshots()
+        .map((snapshot) {
+      // Converts each document from Firestore into a ChatMessageModel object
+      return snapshot.docs
+          .map((doc) => ChatMessageModel.fromFirestore(doc))
+          .toList();
+    });
   }
 }

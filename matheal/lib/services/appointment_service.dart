@@ -1,38 +1,31 @@
-// lib/services/appointment_service.dart
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../models/appointment_model.dart';
 
 class AppointmentService {
-  final _db = FirebaseFirestore.instance;
+  final _db = FirebaseFirestore.instance.collection("appointments");
 
+  /// Creates a new appointment with a "pending" status.
   Future<void> createAppointment(Appointment appointment) async {
-    final doc = _db.collection("appointments").doc();
-    await doc.set(appointment.toFirestore());
+    await _db.add(appointment.toFirestore());
   }
 
-  Future<List<Appointment>> getAppointmentsForUser(String userId) async {
-    final snapshot = await _db
-        .collection("appointments")
-        .where("userId", isEqualTo: userId)
-        .orderBy("dateTime", descending: false)
-        .get();
-    return snapshot.docs
-        .map((doc) => Appointment.fromFirestore(doc.data(), doc.id))
-        .toList();
+  /// Gets a real-time stream of appointments for a specific user.
+  Stream<QuerySnapshot> getAppointmentsStreamForUser(String userId) {
+    return _db.where("userId", isEqualTo: userId).snapshots();
   }
 
-  Future<List<Appointment>> getAppointmentsForDoctor(String doctorId) async {
-    final snapshot = await _db
-        .collection("appointments")
-        .where("doctorId", isEqualTo: doctorId)
-        .orderBy("dateTime", descending: false)
-        .get();
-    return snapshot.docs
-        .map((doc) => Appointment.fromFirestore(doc.data(), doc.id))
-        .toList();
+  /// Gets a real-time stream of appointments for a specific doctor.
+  Stream<QuerySnapshot> getAppointmentsStreamForDoctor(String doctorId) {
+    return _db.where("doctorId", isEqualTo: doctorId).orderBy("dateTime").snapshots();
   }
 
+  /// Updates an appointment's status (e.g., to "confirmed" or "cancelled").
   Future<void> updateAppointmentStatus(String id, String status) async {
-    await _db.collection("appointments").doc(id).update({"status": status});
+    await _db.doc(id).update({"status": status});
+  }
+
+  /// Deletes an appointment document (used when a user cancels a pending request).
+  Future<void> deleteAppointment(String id) async {
+    await _db.doc(id).delete();
   }
 }

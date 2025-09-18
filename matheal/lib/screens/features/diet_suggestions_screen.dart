@@ -1,206 +1,157 @@
-// lib/screens/features/diet_suggestions_screen.dart
-// ignore_for_file: deprecated_member_use
-
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
+import '../../services/chat_service.dart';
 import '../../utils/theme.dart';
 
-class DietSuggestionsScreen extends StatelessWidget {
+class DietSuggestionsScreen extends StatefulWidget {
   const DietSuggestionsScreen({super.key});
+
+  @override
+  State<DietSuggestionsScreen> createState() => _DietSuggestionsScreenState();
+}
+
+class _DietSuggestionsScreenState extends State<DietSuggestionsScreen> {
+  String? _suggestions;
+  bool _isLoading = false;
+  String? _error;
+
+  Future<void> _generateSuggestions() async {
+    setState(() {
+      _isLoading = true;
+      _error = null;
+      _suggestions = null;
+    });
+
+    try {
+      final userProvider = context.read<UserProvider>();
+      final profile = userProvider.profile;
+      final chatService = context.read<ChatService>();
+
+      if (profile == null) {
+        throw Exception("Please complete your profile to get personalized suggestions.");
+      }
+
+      // Construct a detailed prompt for the AI
+      final prompt = """
+        As a maternal health and nutrition expert, provide safe and conservative diet suggestions for a user with the following details:
+        - Weeks Pregnant: ${profile.weeksPregnant ?? 'Not specified'}
+        - Existing Health Conditions: ${profile.conditions.isNotEmpty ? profile.conditions.join(', ') : 'None specified'}
+
+        Please structure your response into clear sections: 'Key Nutrients to Focus On', 'Foods to Eat', and 'Foods to Avoid'. 
+        The advice must be general, easy to understand, and include a strong recommendation to consult a doctor before making any dietary changes.
+        Do not diagnose or give medical advice for the specified conditions, only general dietary considerations.
+      """;
+
+      final response = await chatService.sendMessage(prompt);
+      setState(() {
+        _suggestions = response;
+      });
+    } catch (e) {
+      setState(() {
+        _error = e.toString();
+      });
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+        });
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Diet Suggestions'),
-        backgroundColor: AppColors.background,
+        title: const Text("Personalized Diet Suggestions"),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildPersonalizedSuggestions(),
-            const SizedBox(height: 24),
-            _buildGeneralTips(),
-          ],
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              // Display Area
+              Expanded(
+                child: _isLoading
+                    ? const Center(child: CircularProgressIndicator())
+                    : _error != null
+                        ? _buildErrorWidget(_error!)
+                        : _suggestions != null
+                            ? _buildSuggestionsCard(_suggestions!)
+                            : _buildInitialState(),
+              ),
+
+              // Generate Button
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.psychology_alt_outlined),
+                  label: const Text('Generate My Suggestions'),
+                  onPressed: _isLoading ? null : _generateSuggestions,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildPersonalizedSuggestions() {
-    return Consumer<UserProvider>(
-      builder: (context, userProvider, child) {
-        final profile = userProvider.profile;
-        final conditions = profile?.conditions ?? [];
-
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(20),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Container(
-                      width: 40,
-                      height: 40,
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                      child: const Icon(
-                        Icons.person,
-                        color: AppColors.primary,
-                      ),
-                    ),
-                    const SizedBox(width: 12),
-                    const Text(
-                      'Personalized for You',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                if (conditions.contains('Anemia')) ...[
-                  _buildSuggestionTile(
-                    'Iron-Rich Foods',
-                    'Include spinach, lean meats, lentils, and fortified cereals',
-                    Icons.eco,
-                    AppColors.success,
-                  ),
-                  _buildSuggestionTile(
-                    'Vitamin C',
-                    'Consume citrus fruits with iron-rich meals for better absorption',
-                    Icons.local_drink,
-                    AppColors.warning,
-                  ),
-                ],
-                if (conditions.contains('Diabetes') || conditions.contains('Gestational diabetes')) ...[
-                  _buildSuggestionTile(
-                    'Low Glycemic Index',
-                    'Choose whole grains, vegetables, and lean proteins',
-                    Icons.grain,
-                    AppColors.info,
-                  ),
-                ],
-                if (conditions.isEmpty) ...[
-                  const Text(
-                    'Complete your profile to get personalized diet suggestions based on your health conditions.',
-                    style: TextStyle(color: AppColors.textSecondary),
-                  ),
-                ],
-              ],
-            ),
-          ),
-        );
-      },
+  Widget _buildInitialState() {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.dining, size: 80, color: AppColors.primary),
+        const SizedBox(height: 16),
+        Text(
+          'Get AI-Powered Advice',
+          style: Theme.of(context).textTheme.headlineSmall,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          'Tap the button below to generate diet tips based on your profile information.',
+          style: Theme.of(context).textTheme.bodyMedium,
+          textAlign: TextAlign.center,
+        ),
+      ],
     );
   }
 
-  Widget _buildGeneralTips() {
-    final tips = [
-      {
-        'title': 'Folic Acid',
-        'description': 'Essential for baby\'s neural development. Found in leafy greens and fortified grains.',
-        'icon': Icons.healing,
-        'color': AppColors.primary,
-      },
-      {
-        'title': 'Calcium',
-        'description': 'Important for bone development. Include dairy products, fortified plant milks.',
-        'icon': Icons.sports_gymnastics,
-        'color': AppColors.accent,
-      },
-      {
-        'title': 'Omega-3',
-        'description': 'Support brain development. Fish, walnuts, and flaxseeds are great sources.',
-        'icon': Icons.water_drop,
-        'color': AppColors.info,
-      },
-      {
-        'title': 'Hydration',
-        'description': 'Drink 8-10 glasses of water daily to stay properly hydrated.',
-        'icon': Icons.local_drink,
-        'color': AppColors.success,
-      },
-    ];
-
+  Widget _buildSuggestionsCard(String suggestions) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
+      child: SingleChildScrollView(
         padding: const EdgeInsets.all(20),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'General Pregnancy Nutrition',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            const SizedBox(height: 16),
-            ...tips.map((tip) => _buildSuggestionTile(
-              tip['title'] as String,
-              tip['description'] as String,
-              tip['icon'] as IconData,
-              tip['color'] as Color,
-            )),
-          ],
+        child: Text(
+          suggestions,
+          style: const TextStyle(fontSize: 16, height: 1.5),
         ),
       ),
     );
   }
 
-  Widget _buildSuggestionTile(String title, String description, IconData icon, Color color) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Icon(icon, color: color, size: 20),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: const TextStyle(
-                    fontWeight: FontWeight.w600,
-                    fontSize: 16,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  description,
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
+  Widget _buildErrorWidget(String error) {
+    return Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Icon(Icons.error_outline, size: 60, color: AppColors.error),
+        const SizedBox(height: 16),
+        Text(
+          'Could not generate suggestions',
+          style: Theme.of(context).textTheme.headlineSmall,
+          textAlign: TextAlign.center,
+        ),
+        const SizedBox(height: 8),
+        Text(
+          error,
+          textAlign: TextAlign.center,
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      ],
     );
   }
 }

@@ -38,7 +38,7 @@ class ChatService {
             'parts': [
               {
                 'text':
-                    'You are a maternal health assistant. Give safe, conservative tips and always recommend consulting a doctor for severe issues.',
+                    'You are a maternal health assistant. Only answer pregnancy-related questions. Give safe, conservative tips, and always recommend consulting a doctor for severe or emergency issues. Politely decline if the question is not about pregnancy.',
               }
             ]
           },

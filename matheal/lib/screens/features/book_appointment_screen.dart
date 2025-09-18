@@ -1,12 +1,11 @@
-// lib/screens/features/book_appointment_screen.dart
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import '../../models/user_model.dart';
 import '../../models/appointment_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
+import '../../services/appointment_service.dart';
 import '../../utils/theme.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
@@ -17,6 +16,7 @@ class BookAppointmentScreen extends StatefulWidget {
 }
 
 class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
+  final AppointmentService _appointmentService = AppointmentService();
   DateTime? _selectedDateTime;
   final _notesController = TextEditingController();
   final _searchController = TextEditingController();
@@ -25,101 +25,50 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
   String? _filterHospital;
   String _searchQuery = "";
 
+  @override
+  void initState() {
+    super.initState();
+    _searchController.addListener(() {
+      setState(() {
+        _searchQuery = _searchController.text.toLowerCase();
+      });
+    });
+  }
+  
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _notesController.dispose();
+    super.dispose();
+  }
+
   Future<void> _pickDateTimeAndBook(UserModel doctor) async {
     final now = DateTime.now();
-
-    final date = await showDatePicker(
-      context: context,
-      initialDate: now,
-      firstDate: now,
-      lastDate: now.add(const Duration(days: 365)),
-    );
+    final date = await showDatePicker(context: context, initialDate: now, firstDate: now, lastDate: now.add(const Duration(days: 365)));
     if (date == null) return;
-
-    final time = await showTimePicker(
-      context: context,
-      initialTime: TimeOfDay.now(),
-    );
+    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(now));
     if (time == null) return;
 
-    setState(() {
-      _selectedDateTime = DateTime(
-        date.year,
-        date.month,
-        date.day,
-        time.hour,
-        time.minute,
-      );
-    });
+    setState(() => _selectedDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute));
 
     if (!mounted) return;
-
-    showModalBottomSheet(
+    final confirmed = await showModalBottomSheet<bool>(
       context: context,
-      builder: (ctx) => Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              "Confirm Appointment",
-              style: Theme.of(context).textTheme.titleLarge,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              "Doctor: Dr. ${doctor.name}\n"
-              "Specialization: ${doctor.specialization ?? 'N/A'}\n"
-              "Hospital: ${doctor.hospitalName ?? 'N/A'}\n"
-              "Date & Time: ${DateFormat('dd MMM yyyy, hh:mm a').format(_selectedDateTime!)}",
-              style: const TextStyle(fontSize: 14),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: _notesController,
-              decoration: const InputDecoration(
-                labelText: "Notes (optional)",
-                border: OutlineInputBorder(),
-              ),
-              maxLines: 2,
-            ),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                  child: OutlinedButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: const Text("Cancel"),
-                  ),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: ElevatedButton(
-                    onPressed: () async {
-                      Navigator.pop(ctx);
-                      await _bookAppointment(doctor);
-                    },
-                    child: const Text("Confirm"),
-                  ),
-                ),
-              ],
-            )
-          ],
-        ),
-      ),
+      isScrollControlled: true,
+      builder: (ctx) => _buildConfirmationSheet(doctor),
     );
+
+    if (confirmed == true) {
+      await _bookAppointment(doctor);
+    }
   }
 
   Future<void> _bookAppointment(UserModel doctor) async {
-      if (_selectedDateTime == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text("Please select date and time")),
-    );
-    return;
-  }
+    if (_selectedDateTime == null) return;
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
     final appointment = Appointment(
-      id: "",
+      id: '', // Firestore will generate this
       userId: userId,
       doctorId: doctor.uid,
       dateTime: _selectedDateTime!,
@@ -127,31 +76,28 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       notes: _notesController.text,
     );
 
-    final docRef = FirebaseFirestore.instance.collection("appointments").doc();
-    await docRef.set(appointment.toFirestore());
+    await _appointmentService.createAppointment(appointment);
 
-    // Schedule the notification for one day before the appointment
     await NotificationService.scheduleAppointment(
-      id: docRef.id.hashCode,
+      id: UniqueKey().hashCode,
       title: "Appointment Reminder",
-      body:
-          "Your appointment with Dr. ${doctor.name} is tomorrow at ${DateFormat('hh:mm a').format(_selectedDateTime!)}",
+      body: "Your appointment with Dr. ${doctor.name} is tomorrow.",
       scheduledDate: _selectedDateTime!.subtract(const Duration(days: 1)),
     );
 
     if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text("Appointment booked successfully!")),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Appointment requested successfully!")));
+      Navigator.of(context).pop();
     }
   }
-
+  
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Book Appointment"),
+        title: const Text("Book an Appointment"),
         actions: [
+          // ✅ FILTER BUTTON
           PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list),
             onSelected: (value) {
@@ -170,174 +116,161 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             },
             itemBuilder: (context) => [
               const PopupMenuItem(value: "All", child: Text("All Doctors")),
-              const PopupMenuItem(value: "Spec:Cardiology", child: Text("Cardiology")),
-              const PopupMenuItem(value: "Spec:Dermatology", child: Text("Dermatology")),
-              const PopupMenuItem(value: "Hosp:City Hospital", child: Text("City Hospital")),
-              const PopupMenuItem(value: "Hosp:General Clinic", child: Text("General Clinic")),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: "Spec:Psychologist", child: Text("Psychologist")),
+              const PopupMenuItem(value: "Spec:Medicine", child: Text("Medicine")),
+              const PopupMenuItem(value: "Spec:Orthopedic", child: Text("Orthopedic")),
+              const PopupMenuDivider(),
+              const PopupMenuItem(value: "Hosp:General Hospital", child: Text("General Hospital")),
             ],
           ),
         ],
       ),
       body: Column(
         children: [
+          // ✅ SEARCH BAR
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: TextField(
               controller: _searchController,
               decoration: InputDecoration(
                 prefixIcon: const Icon(Icons.search),
-                hintText: "Search doctors, specialization, hospital...",
+                hintText: "Search doctors, specialization...",
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(25),
+                  borderSide: BorderSide.none,
                 ),
+                filled: true,
+                fillColor: Colors.grey.shade200,
               ),
-              onChanged: (val) {
-                setState(() {
-                  _searchQuery = val.toLowerCase();
-                });
-              },
             ),
           ),
           Expanded(
             child: FutureBuilder<List<UserModel>>(
               future: FirestoreService().getAllDoctors(),
               builder: (context, snapshot) {
-                if (!snapshot.hasData) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
                   return const Center(child: CircularProgressIndicator());
                 }
+                if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
+                if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No doctors available."));
+                
+                // ✅ FILTERING AND SEARCHING LOGIC
                 var doctors = snapshot.data!;
-
                 if (_filterSpecialization != null) {
-                  doctors = doctors
-                      .where((d) => d.specialization == _filterSpecialization)
-                      .toList();
+                  doctors = doctors.where((d) => d.specialization == _filterSpecialization).toList();
                 }
                 if (_filterHospital != null) {
-                  doctors = doctors
-                      .where((d) => d.hospitalName == _filterHospital)
-                      .toList();
+                  doctors = doctors.where((d) => d.hospitalName == _filterHospital).toList();
                 }
-
                 if (_searchQuery.isNotEmpty) {
                   doctors = doctors.where((d) {
                     final name = d.name.toLowerCase();
                     final spec = (d.specialization ?? "").toLowerCase();
-                    final hosp = (d.hospitalName ?? "").toLowerCase();
-                    return name.contains(_searchQuery) ||
-                        spec.contains(_searchQuery) ||
-                        hosp.contains(_searchQuery);
+                    return name.contains(_searchQuery) || spec.contains(_searchQuery);
                   }).toList();
                 }
 
                 if (doctors.isEmpty) {
-                  return const Center(child: Text("No doctors found."));
+                  return const Center(child: Text("No doctors found matching your criteria."));
                 }
-
+                
                 return ListView.builder(
                   padding: const EdgeInsets.all(12),
                   itemCount: doctors.length,
                   itemBuilder: (context, index) {
-                    final doc = doctors[index];
-                    return Container(
-                      height: 120,
-                      margin: const EdgeInsets.symmetric(vertical: 8),
-                      child: GestureDetector(
-                        onTap: () => _pickDateTimeAndBook(doc),
-                        child: Stack(
-                          children: [
-                            Card(
-                              elevation: 4,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(20),
-                              ),
-                              clipBehavior: Clip.antiAlias,
-                              child: Container(
-                                decoration: const BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [Color(0xFF2C3E50), Color(0xFF1B2631)],
-                                    begin: Alignment.topLeft,
-                                    end: Alignment.bottomRight,
-                                  ),
-                                ),
-                              ),
-                            ),
-                            Positioned.fill(
-                              right: 110,
-                              child: Padding(
-                                padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 16.0),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                  children: [
-                                    Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          "Dr. ${doc.name}",
-                                          style: const TextStyle(
-                                            color: Colors.white,
-                                            fontWeight: FontWeight.bold,
-                                            fontSize: 18,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          doc.specialization ?? "Specialization not set",
-                                          style: TextStyle(
-                                            color: Colors.white.withOpacity(0.8),
-                                            fontSize: 14,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ),
-                                    Row(
-                                      children: [
-                                        Icon(Icons.local_hospital, color: Colors.white.withOpacity(0.7), size: 14),
-                                        const SizedBox(width: 4),
-                                        Expanded(
-                                          child: Text(
-                                            doc.hospitalName ?? "Hospital not set",
-                                            style: TextStyle(
-                                              color: Colors.white.withOpacity(0.7),
-                                              fontSize: 12,
-                                            ),
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            Positioned(
-                              right: 16,
-                              top: 0,
-                              bottom: 0,
-                              child: Center(
-                                child: CircleAvatar(
-                                  radius: 45,
-                                  backgroundColor: Colors.white.withOpacity(0.2),
-                                  backgroundImage: doc.avatarUrl != null
-                                      ? NetworkImage(doc.avatarUrl!)
-                                      : null,
-                                  child: doc.avatarUrl == null
-                                      ? const Icon(Icons.person, size: 45, color: Colors.white70)
-                                      : null,
-                                ),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
+                    final doctor = doctors[index];
+                    return _buildDoctorCard(doctor);
                   },
                 );
               },
             ),
           ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDoctorCard(UserModel doctor) {
+    return Container(
+      height: 120,
+      margin: const EdgeInsets.symmetric(vertical: 8),
+      child: GestureDetector(
+        onTap: () => _pickDateTimeAndBook(doctor),
+        child: Stack(
+          children: [
+            Card(
+              elevation: 4,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+              clipBehavior: Clip.antiAlias,
+              child: Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color(0xFF2C3E50), Color(0xFF1B2631)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              right: 0,
+              bottom: 0,
+              top: 0,
+              child: ClipRRect(
+                borderRadius: const BorderRadius.only(topRight: Radius.circular(20), bottomRight: Radius.circular(20)),
+                child: doctor.avatarUrl != null
+                    ? Image.network(doctor.avatarUrl!, width: 110, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 80, color: Colors.white54))
+                    : const SizedBox(width: 110, child: Icon(Icons.medical_services_outlined, size: 80, color: Colors.white54)),
+              ),
+            ),
+            Positioned.fill(
+              right: 110,
+              child: Padding(
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text("Dr. ${doctor.name}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                    const SizedBox(height: 4),
+                    Text(doctor.specialization ?? "Specialist", style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14)),
+                    const SizedBox(height: 4),
+                    Text(doctor.hospitalName ?? "Clinic", style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
+                  ],
+                ),
+              ),
+            ),
+            Positioned(
+              bottom: 8,
+              right: 120,
+              child: Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.5), size: 16),
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildConfirmationSheet(UserModel doctor) {
+    return Padding(
+      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text("Confirm Appointment", style: Theme.of(context).textTheme.titleLarge),
+          const SizedBox(height: 12),
+          Text("Request an appointment with Dr. ${doctor.name} for ${DateFormat('dd MMM yyyy, hh:mm a').format(_selectedDateTime!)}?"),
+          const SizedBox(height: 16),
+          TextField(controller: _notesController, decoration: const InputDecoration(labelText: "Notes (optional)")),
+          const SizedBox(height: 16),
+          Row(
+            children: [
+              Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel"))),
+              const SizedBox(width: 12),
+              Expanded(child: ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text("Confirm Request"))),
+            ],
+          )
         ],
       ),
     );

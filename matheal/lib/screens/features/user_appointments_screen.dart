@@ -1,157 +1,164 @@
-// lib/screens/features/user_appointments_screen.dart
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
 import '../../services/firestore_service.dart';
+import '../../services/appointment_service.dart';
 import '../../models/appointment_model.dart';
 import '../../models/user_model.dart';
 import '../../utils/theme.dart';
+import '../../widgets/appointment_card.dart'; // Using the reusable stylish card
 
-class UserAppointmentsScreen extends StatelessWidget {
+class UserAppointmentsScreen extends StatefulWidget {
   const UserAppointmentsScreen({super.key});
+
+  @override
+  State<UserAppointmentsScreen> createState() => _UserAppointmentsScreenState();
+}
+
+class _UserAppointmentsScreenState extends State<UserAppointmentsScreen>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+  final AppointmentService _appointmentService = AppointmentService();
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 3, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  /// Handles the logic for cancelling an appointment.
+  Future<void> _cancelAppointment(Appointment appointment) async {
+    final bool didRequestCancel = await showDialog(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Cancel Appointment'),
+            content: const Text('Are you sure you want to cancel this appointment?'),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.of(context).pop(false),
+                child: const Text('No'),
+              ),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                child: const Text('Yes, Cancel'),
+              ),
+            ],
+          ),
+        ) ??
+        false;
+
+    if (didRequestCancel && mounted) {
+      try {
+        // If the appointment was only pending, delete it so the doctor doesn't see it.
+        // If it was confirmed, update the status to 'cancelled'.
+        if (appointment.status == 'pending') {
+          await _appointmentService.deleteAppointment(appointment.id);
+        } else {
+          await _appointmentService.updateAppointmentStatus(appointment.id, 'cancelled');
+        }
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Appointment cancelled.'), backgroundColor: AppColors.success),
+        );
+      } catch (e) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e'), backgroundColor: AppColors.error),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("My Appointments")),
+      appBar: AppBar(
+        title: const Text("My Appointments"),
+        bottom: TabBar(
+          controller: _tabController,
+          tabs: const [
+            Tab(text: "Upcoming"),
+            Tab(text: "Pending"),
+            Tab(text: "History"),
+          ],
+        ),
+      ),
       body: StreamBuilder<QuerySnapshot>(
-        stream: FirebaseFirestore.instance
-            .collection("appointments")
-            .where("userId", isEqualTo: userId)
-            .orderBy("dateTime")
-            .snapshots(),
+        stream: _appointmentService.getAppointmentsStreamForUser(userId),
         builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Center(child: Text("Error: ${snapshot.error}"));
+          }
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-          if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-            return const Center(child: Text("No appointments booked yet."));
-          }
 
-          final appointments = snapshot.data!.docs
-              .map((doc) => Appointment.fromFirestore(
-                  doc.data() as Map<String, dynamic>, doc.id))
+          final now = DateTime.now();
+          final allAppointments = snapshot.data!.docs
+              .map((d) => Appointment.fromFirestore(d.data() as Map<String, dynamic>, d.id))
               .toList();
 
-          return ListView.builder(
-            padding: const EdgeInsets.all(12),
-            itemCount: appointments.length,
-            itemBuilder: (context, index) {
-              final appointment = appointments[index];
-
-              return FutureBuilder<UserModel?>(
-                future: FirestoreService().getDoctorById(appointment.doctorId),
-                builder: (context, docSnap) {
-                  if (!docSnap.hasData) {
-                    // Show a placeholder while loading doctor info
-                    return const Card(
-                      margin: EdgeInsets.symmetric(vertical: 8),
-                      child: SizedBox(height: 120, child: Center(child: CircularProgressIndicator())),
-                    );
-                  }
-                  
-                  final doctor = docSnap.data!;
-                  return _buildAppointmentCard(context, appointment, doctor);
-                },
-              );
-            },
+          // Filter appointments into the correct categories
+          final upcoming = allAppointments
+              .where((a) => a.dateTime.isAfter(now) && a.status == 'confirmed')
+              .toList();
+          final pending = allAppointments
+              .where((a) => a.dateTime.isAfter(now) && a.status == 'pending')
+              .toList();
+          final history = allAppointments.where((a) => a.dateTime.isBefore(now)).toList();
+          
+          return TabBarView(
+            controller: _tabController,
+            children: [
+              _buildAppointmentList(upcoming, "No upcoming appointments."),
+              _buildAppointmentList(pending, "No pending appointment requests."),
+              _buildAppointmentList(history, "No appointment history."),
+            ],
           );
         },
       ),
     );
   }
 
-  Widget _buildAppointmentCard(BuildContext context, Appointment appointment, UserModel doctor) {
-    return Container(
-      height: 120,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Stack(
-        children: [
-          // Background Card with Gradient
-          Card(
-            elevation: 4,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            clipBehavior: Clip.antiAlias,
-            child: Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color(0xFF2C3E50), Color(0xFF1B2631)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                ),
-              ),
-            ),
-          ),
-          // Doctor's Image
-          Positioned(
-            right: 0,
-            bottom: 0,
-            top: 0,
-            child: ClipRRect(
-              borderRadius: const BorderRadius.only(
-                topRight: Radius.circular(20),
-                bottomRight: Radius.circular(20),
-              ),
-              child: doctor.avatarUrl != null
-                  ? Image.network(
-                      doctor.avatarUrl!,
-                      width: 110,
-                      fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 80, color: Colors.white54),
-                    )
-                  : const SizedBox(
-                      width: 110,
-                      child: Icon(Icons.person, size: 80, color: Colors.white54),
-                    ),
-            ),
-          ),
-          // Text Details
-          Positioned.fill(
-            right: 110, // Avoid overlap with image
-            child: Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Date and Time
-                  Row(
-                    children: [
-                      const Icon(Icons.calendar_today, color: Colors.white70, size: 14),
-                      const SizedBox(width: 8),
-                      Text(
-                        DateFormat('MMMM d, hh:mm a').format(appointment.dateTime),
-                        style: const TextStyle(color: Colors.white70, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                  const Spacer(),
-                  // Doctor Name
-                  Text(
-                    "Dr. ${doctor.name}",
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  // Specialization
-                  Text(
-                    doctor.specialization ?? "Specialist",
-                    style: TextStyle(
-                      color: Colors.white.withOpacity(0.8),
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        ],
-      ),
+  /// Builds a list of appointments for a specific tab.
+  Widget _buildAppointmentList(List<Appointment> appointments, String emptyMessage) {
+    if (appointments.isEmpty) {
+      return Center(child: Text(emptyMessage, style: TextStyle(color: AppColors.textSecondary)));
+    }
+    return ListView.builder(
+      padding: const EdgeInsets.all(12),
+      itemCount: appointments.length,
+      itemBuilder: (context, index) {
+        final appointment = appointments[index];
+        return FutureBuilder<UserModel?>(
+          future: FirestoreService().getDoctorById(appointment.doctorId),
+          builder: (context, docSnap) {
+            if (!docSnap.hasData) {
+              // Show a placeholder while the doctor's details are loading
+              return const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()));
+            }
+            final doctor = docSnap.data!;
+            
+            // Use the stylish reusable card
+            return AppointmentCard(
+              appointment: appointment,
+              participant: doctor,
+              onCancel: appointment.dateTime.isAfter(DateTime.now())
+                  ? () => _cancelAppointment(appointment)
+                  : null, // Only show cancel for future appointments
+            );
+          },
+        );
+      },
     );
   }
 }
+
