@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:matheal/screens/features/book_appointment_screen.dart';
 import 'package:matheal/screens/features/community_screen.dart';
-import 'package:matheal/screens/features/create_post_screen.dart';
 import 'package:matheal/screens/features/user_appointments_screen.dart';
 import 'package:matheal/services/auth_service.dart';
 import 'package:matheal/services/firestore_service.dart';
@@ -16,7 +15,6 @@ import '../providers/theme_provider.dart';
 import '../utils/theme.dart';
 import 'features/medicine_reminders_screen.dart';
 import 'features/consumed_medicines_screen.dart';
-import 'features/feeding_reminders_screen.dart';
 import 'features/diet_suggestions_screen.dart';
 import 'features/exercise_suggestions_screen.dart';
 import 'features/chat_screen.dart';
@@ -32,7 +30,6 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
-  bool _isDarkMode = false;
   bool _notificationsEnabled = true;
 
   // Screens for each bottom nav tab

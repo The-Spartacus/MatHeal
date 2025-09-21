@@ -25,7 +25,7 @@ class FirestoreService {
         await _db.collection("users").where("role", isEqualTo: "doctor").get();
 
     return snapshot.docs
-        .map((doc) => UserModel.fromFirestore(doc.data()!))
+        .map((doc) => UserModel.fromFirestore(doc.data()))
         .toList();
   }
 
