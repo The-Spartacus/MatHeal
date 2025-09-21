@@ -293,7 +293,7 @@ class _LoginScreenState extends State<LoginScreen> {
                 child: Text(
                   'Social login coming soon',
                   style: TextStyle(
-                    color: AppColors.textHint,
+                    color: AppColors.textSecondary,
                     fontSize: 12,
                   ),
                 ),

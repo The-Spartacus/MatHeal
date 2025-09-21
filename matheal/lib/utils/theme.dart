@@ -1,29 +1,29 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// --- Redesigned Color Palette for a Sleek Look ---
 class AppColors {
-  static const Color primary =  Color.fromRGBO(59, 170, 243, 1); // Health green
-  static const Color accent = Color(0xFFE91E63); // Warm yellow
+  // Light Mode Colors
+  static const Color primary = Color.fromRGBO(59, 170, 243, 1);
+  static const Color accent = Color(0xFFE91E63);
   static const Color background = Color(0xFFFDFDFD);
   static const Color surface = Colors.white;
-  static const Color error = Color(0xFFE57373);
-  static const Color success = Color(0xFF81C784);
-  static const Color warning = Color(0xFFFFB74D);
-  static const Color info = Color(0xFF64B5F6);
-  
-  // Text colors
   static const Color textPrimary = Color(0xFF212121);
   static const Color textSecondary = Color(0xFF757575);
-  static const Color textHint = Color(0xFFBDBDBD);
-  
-  // Gradient colors
-  static const List<Color> splashGradient = [
-    Color(0xFFE8F5E8), // Soft pink
-    Color(0xFFC8E6C9), // Pastel green
-  ];
+
+  // Dark Mode Colors (New)
+  static const Color darkBackground = Color(0xFF121212);
+  static const Color darkSurface = Color(0xFF1E1E1E); // For opaque surfaces
+  static const Color darkTextPrimary = Colors.white;
+  static const Color darkTextSecondary = Colors.white70;
+
+  // Shared Colors
+  static const Color error = Color(0xFFE57373);
+  static const Color success = Color(0xFF81C784);
 }
 
 class AppTheme {
+  // --- Light Theme (Unchanged) ---
   static final lightTheme = ThemeData(
     useMaterial3: true,
     colorScheme: ColorScheme.fromSeed(
@@ -37,96 +37,65 @@ class AppTheme {
     ),
     textTheme: GoogleFonts.poppinsTextTheme(),
     appBarTheme: const AppBarTheme(
-      elevation: 0,
       backgroundColor: AppColors.background,
-      foregroundColor: AppColors.textPrimary,
-      centerTitle: true,
+      foregroundColor: Color.fromARGB(255, 14, 13, 13),
     ),
     cardTheme: CardThemeData(
       elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+    ),
+    elevatedButtonTheme: ElevatedButtonThemeData(
+      style: ElevatedButton.styleFrom(
+        backgroundColor: AppColors.primary,
+        foregroundColor: Colors.white,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+      ),
+    ),
+  );
+
+
+  static final darkTheme = ThemeData(
+    useMaterial3: true,
+    brightness: Brightness.dark,
+    scaffoldBackgroundColor: AppColors.darkBackground,
+    colorScheme: ColorScheme.fromSeed(
+      seedColor: AppColors.primary,
+      brightness: Brightness.dark,
+      primary: AppColors.primary,
+      secondary: AppColors.accent,
+      surface: AppColors.darkSurface,
+      background: AppColors.darkBackground,
+      error: AppColors.error,
+    ),
+    textTheme: GoogleFonts.poppinsTextTheme(
+      ThemeData(brightness: Brightness.dark).textTheme,
+    ).apply(
+      bodyColor: AppColors.darkTextPrimary,
+      displayColor: AppColors.darkTextPrimary,
+    ),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Colors.transparent, // Transparent for better background effect
+      elevation: 0,
+    ),
+
+    cardTheme: CardThemeData(
+      color: Colors.white.withOpacity(0.05), // Slightly transparent white
+      elevation: 0, // Elevation is handled by the glass effect's border
       shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: Colors.white.withOpacity(0.1), // Subtle border
+          width: 1.5,
+        ),
       ),
     ),
     elevatedButtonTheme: ElevatedButtonThemeData(
       style: ElevatedButton.styleFrom(
         backgroundColor: AppColors.primary,
         foregroundColor: Colors.white,
-        elevation: 2,
-        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(8),
-        ),
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       ),
-    ),
-    inputDecorationTheme: InputDecorationTheme(
-      border: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-      ),
-      enabledBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: Color(0xFFE0E0E0)),
-      ),
-      focusedBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.primary, width: 2),
-      ),
-      errorBorder: OutlineInputBorder(
-        borderRadius: BorderRadius.circular(8),
-        borderSide: const BorderSide(color: AppColors.error),
-      ),
-      filled: true,
-      fillColor: Colors.white,
-      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-    ),
-    floatingActionButtonTheme: const FloatingActionButtonThemeData(
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
     ),
   );
-
-static final darkTheme = ThemeData(
-  useMaterial3: true,
-  colorScheme: ColorScheme.fromSeed(
-    seedColor: AppColors.primary,
-    brightness: Brightness.dark,
-    primary: AppColors.primary,
-    secondary: AppColors.accent,
-  ),
-
-  // Font
-  textTheme: GoogleFonts.poppinsTextTheme(
-    ThemeData(brightness: Brightness.dark).textTheme,
-  ),
-
-  // AppBar
-  appBarTheme: const AppBarTheme(
-    elevation: 0,
-    backgroundColor: Colors.transparent,
-    centerTitle: true,
-  ),
-
-  // Card Styling
-  cardTheme: CardThemeData(
-    color: const Color(0xFF1E1E1E),
-    elevation: 2,
-    shape: RoundedRectangleBorder(
-      borderRadius: BorderRadius.circular(12),
-    ),
-  ),
-
-  // Elevated Buttons
-  elevatedButtonTheme: ElevatedButtonThemeData(
-    style: ElevatedButton.styleFrom(
-      backgroundColor: AppColors.primary,
-      foregroundColor: Colors.white,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
-      textStyle: const TextStyle(fontWeight: FontWeight.w600),
-    ),
-  ),
-);
-
 }

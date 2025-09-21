@@ -6,7 +6,6 @@ import '../../models/appointment_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/appointment_service.dart';
-import '../../utils/theme.dart';
 
 class BookAppointmentScreen extends StatefulWidget {
   const BookAppointmentScreen({super.key});

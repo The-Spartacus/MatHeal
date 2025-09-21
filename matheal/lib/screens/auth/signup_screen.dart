@@ -378,8 +378,8 @@ if (mounted) {
                         const SizedBox(height: 16),
                         const Text(
                           'Your data is securely stored in the cloud',
-                          style: TextStyle(
-                            color: AppColors.textHint,
+                          style: TextStyle( 
+                            color: AppColors.textSecondary,
                             fontSize: 12,
                           ),
                           textAlign: TextAlign.center,

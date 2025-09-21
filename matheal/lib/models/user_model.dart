@@ -1,4 +1,3 @@
-import 'package:flutter/foundation.dart';
 
 /// ---------------- USER MODEL ----------------
 class UserModel {

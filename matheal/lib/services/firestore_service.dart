@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:matheal/models/chat_model.dart';
 import '../models/user_model.dart';
+import '../models/post_model.dart';
 
 class FirestoreService {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
@@ -126,5 +127,37 @@ class FirestoreService {
           .map((doc) => ChatMessageModel.fromFirestore(doc))
           .toList();
     });
+  }
+    
+  // ---------------- COMMUNITY POST OPERATIONS ----------------
+
+  /// Creates a new post in the community feed.
+  Future<void> createPost(PostModel post) async {
+    await _db.collection('community_posts').add(post.toFirestore());
+  }
+
+  /// Retrieves a real-time stream of all community posts, newest first.
+  Stream<List<PostModel>> getCommunityPosts() {
+    return _db
+        .collection('community_posts')
+        .orderBy('timestamp', descending: true)
+        .snapshots()
+        .map((snapshot) => snapshot.docs.map((doc) => PostModel.fromFirestore(doc)).toList());
+  }
+
+  /// Toggles a user's like on a specific post.
+  Future<void> toggleLikePost(String postId, String userId, bool isLiked) async {
+    final postRef = _db.collection('community_posts').doc(postId);
+    if (isLiked) {
+      // If already liked, remove the user's ID from the likes array
+      await postRef.update({
+        'likes': FieldValue.arrayRemove([userId])
+      });
+    } else {
+      // If not liked, add the user's ID to the likes array
+      await postRef.update({
+        'likes': FieldValue.arrayUnion([userId])
+      });
+    }
   }
 }

@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:matheal/screens/features/book_appointment_screen.dart';
+import 'package:matheal/screens/features/community_screen.dart';
+import 'package:matheal/screens/features/create_post_screen.dart';
 import 'package:matheal/screens/features/user_appointments_screen.dart';
 import 'package:matheal/services/auth_service.dart';
 import 'package:matheal/services/firestore_service.dart';
@@ -420,7 +422,7 @@ Widget _buildFeatureGrid(BuildContext context) {
     FeatureCard(title: 'Consumed Medicines', subtitle: 'View medication history', icon: Icons.history, color: const Color(0xFFF3E5F5), iconColor: const Color(0xFF7B1FA2), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ConsumedMedicinesScreen()))),
     FeatureCard(title: 'Doctor Appointments', subtitle: 'Schedule & track visits', icon: Icons.local_hospital, color: const Color(0xFFE8F5E8), iconColor: const Color(0xFF388E3C), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const UserAppointmentsScreen()))),
     FeatureCard(title: 'Book Appointments', subtitle: 'Schedule Appointments', icon: Icons.save, color: const Color(0xFFE8F5E8), iconColor: const Color(0xFF388E3C), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const BookAppointmentScreen()))),
-    FeatureCard(title: 'Feeding Reminders', subtitle: 'Nutrition tracking', icon: Icons.restaurant, color: const Color(0xFFFFF3E0), iconColor: const Color(0xFFF57C00), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const FeedingRemindersScreen()))),
+    FeatureCard(title: 'matcomunity', subtitle: 'share happiest moment', icon: Icons.telegram, color: const Color(0xFFFFF3E0), iconColor: const Color(0xFFF57C00), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const CommunityScreen()))),
     FeatureCard(title: 'Diet Suggestions', subtitle: 'Personalized nutrition', icon: Icons.dining, color: const Color(0xFFF1F8E9), iconColor: const Color(0xFF689F38), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const DietSuggestionsScreen()))),
     FeatureCard(title: 'Exercise Suggestions', subtitle: 'Safe workouts', icon: Icons.fitness_center, color: const Color(0xFFE0F2F1), iconColor: const Color(0xFF00695C), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ExerciseSuggestionsScreen()))),
   ];
@@ -449,9 +451,9 @@ Widget _buildFeatureGrid(BuildContext context) {
                   child: Icon(feature.icon, color: feature.iconColor, size: 32),
                 ),
                 const SizedBox(height: 12),
-                Text(feature.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: AppColors.textPrimary), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
+                Text(feature.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color.fromARGB(255, 99, 180, 255)), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
-                Text(feature.subtitle, style: const TextStyle(fontSize: 12, color: AppColors.textSecondary), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
+                Text(feature.subtitle, style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 161, 209, 253)), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
               ],
             ),
           ),

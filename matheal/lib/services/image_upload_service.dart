@@ -11,7 +11,7 @@ class ImageUploadService {
   /// Uploads the given image file to Cloudinary and returns the secure URL.
   Future<String> uploadImage(File imageFile) async {
     if (_cloudName == null || _uploadPreset == null) {
-      throw Exception('Cloudinary environment variables not set.');
+      throw Exception('Cloudinary environment variables not set in .env file.');
     }
 
     final url =
@@ -38,3 +38,4 @@ class ImageUploadService {
     }
   }
 }
+

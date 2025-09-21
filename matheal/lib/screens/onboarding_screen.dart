@@ -215,7 +215,7 @@ floatingActionButtonLocation: _currentIndex < _pages.length - 1
                           decoration: BoxDecoration(
                             color: _currentIndex == index
                                 ? AppColors.primary
-                                : AppColors.textHint,
+ : AppColors.textSecondary,
                             borderRadius: BorderRadius.circular(4),
                           ),
                         ),

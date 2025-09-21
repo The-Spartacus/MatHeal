@@ -14,6 +14,7 @@ import 'services/auth_service.dart';
 import 'services/notification_service.dart';
 import 'services/firestore_service.dart';
 import 'services/chat_service.dart';
+import 'services/image_upload_service.dart'; // ✅ ADDED IMPORT
 import 'providers/theme_provider.dart';
 import 'providers/user_provider.dart';
 import 'screens/splash_screen.dart';
@@ -85,6 +86,9 @@ class MatHealApp extends StatelessWidget {
         Provider<FirestoreService>(
           create: (_) => FirestoreService(),
         ),
+        Provider<ImageUploadService>(
+          create: (_) => ImageUploadService(),
+        ), // ✅ ADDED PROVIDER
         Provider<ChatService>(
           create: (_) => ChatService(),
         ),
@@ -129,3 +133,4 @@ routes: {
     );
   }
 }
+
