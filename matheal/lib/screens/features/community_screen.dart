@@ -2,11 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
 import '../features/create_post_screen.dart';
 import '../../models/post_model.dart';
 import '../../models/user_model.dart';
 import '../../services/firestore_service.dart';
 import '../../utils/theme.dart';
+
 class CommunityScreen extends StatelessWidget {
   const CommunityScreen({super.key});
 
@@ -63,20 +65,25 @@ class CommunityScreen extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Post Header with User Info
-          FutureBuilder<UserProfile?>(
-            future: service.getProfile(post.userId),
+          // Author Info
+          FutureBuilder<UserModel?>(
+            future: service.getUser(post.userId),
             builder: (context, snapshot) {
               if (!snapshot.hasData) return const ListTile(title: Text("Loading..."));
-              final authorProfile = snapshot.data!;
+              final author = snapshot.data!;
+              
               return ListTile(
-                leading: CircleAvatar(
-                  backgroundImage: authorProfile.avatarUrl != null ? NetworkImage(authorProfile.avatarUrl!) : null,
-                  child: authorProfile.avatarUrl == null ? const Icon(Icons.person) : null,
+                leading: FutureBuilder<UserProfile?>(
+                  future: service.getProfile(post.userId),
+                  builder: (context, profileSnap) {
+                    final avatarUrl = profileSnap.data?.avatarUrl;
+                    return CircleAvatar(
+                      backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+                      child: avatarUrl == null ? const Icon(Icons.person) : null,
+                    );
+                  }
                 ),
-                // The main user object would have the name, so we'd typically fetch that
-                // For now, we'll just show the user ID as a placeholder for the name
-                title: Text("User ${authorProfile.uid.substring(0, 6)}", style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(author.name, style: const TextStyle(fontWeight: FontWeight.bold)),
                 subtitle: Text(timeAgo),
               );
             },
@@ -118,7 +125,7 @@ class CommunityScreen extends StatelessWidget {
                 ),
                 IconButton(
                   icon: const Icon(Icons.share_outlined, color: Colors.grey),
-                  onPressed: () { /* TODO: Implement Share */ },
+                  onPressed: () => _sharePost(post, service),
                 ),
               ],
             ),
@@ -126,5 +133,14 @@ class CommunityScreen extends StatelessWidget {
         ],
       ),
     );
+  }
+
+  Future<void> _sharePost(PostModel post, FirestoreService service) async {
+    final author = await service.getUser(post.userId);
+    final authorName = author?.name ?? "Unknown User";
+    
+    final shareText = 'Check out this moment from $authorName!\n\n"${post.caption}"\n\n${post.imageUrl}';
+    
+    Share.share(shareText);
   }
 }
