@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:matheal/screens/features/book_appointment_screen.dart';
 import 'package:matheal/screens/features/community_screen.dart';
-import 'package:matheal/screens/features/medication_calendar_screen.dart';
 import 'package:matheal/screens/features/user_appointments_screen.dart';
 import 'package:matheal/services/auth_service.dart';
 import 'package:matheal/services/firestore_service.dart';
@@ -435,14 +434,6 @@ Widget _buildFeatureGrid(BuildContext context) {
       onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MedicineRemindersScreen())),
     ),
     _Feature(
-      title: 'Medication History',
-      subtitle: 'View consumption log',
-      icon: Icons.history_edu_outlined,
-      backgroundColor: const Color(0xFFF3E5F5),
-      iconColor: const Color(0xFF7B1FA2),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MedicationCalendarScreen())),
-    ),
-    _Feature(
       title: 'Your Appointments',
       subtitle: 'Manage scheduled visits',
       icon: Icons.calendar_month_outlined,
@@ -488,7 +479,7 @@ Widget _buildFeatureGrid(BuildContext context) {
       icon: Icons.assistant_outlined,
       backgroundColor: const Color(0xFFEDE7F6),
       iconColor: const Color(0xFF5E35B1),
-      onTap: () {}, // Add navigation later
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
     ),
   ];
 

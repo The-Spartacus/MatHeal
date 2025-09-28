@@ -46,50 +46,73 @@ class FirestoreService {
   }
 
   // ---------------- DOCTOR RATING OPERATIONS ----------------
-  Future<void> addOrUpdateDoctorRating(DoctorRating rating) async {
+Future<void> addOrUpdateDoctorRating(DoctorRating rating) async {
     final doctorRef = _db.collection('users').doc(rating.doctorId);
     final ratingsColRef = _db.collection('doctor_ratings');
 
+    // Use the specific user's rating document reference for writes
+    final userRatingQuery = ratingsColRef
+        .where('userId', isEqualTo: rating.userId)
+        .where('doctorId', isEqualTo: rating.doctorId)
+        .limit(1);
+
     await _db.runTransaction((transaction) async {
-      final existingRatingQuery = await ratingsColRef
-          .where('userId', isEqualTo: rating.userId)
-          .where('doctorId', isEqualTo: rating.doctorId)
-          .limit(1)
-          .get();
+      // --- 1. READ ALL NECESSARY DOCUMENTS FIRST ---
 
-      if (existingRatingQuery.docs.isNotEmpty) {
-        final existingRatingDoc = existingRatingQuery.docs.first;
-        transaction.update(existingRatingDoc.reference, rating.toFirestore());
-      } else {
-        final newRatingRef = ratingsColRef.doc();
-        transaction.set(newRatingRef, rating.toFirestore());
-      }
+      // Read the doctor's main document
+      final doctorDoc = await transaction.get(doctorRef);
 
+      // Read all ratings for this doctor
       final allRatingsSnapshot = await ratingsColRef
           .where('doctorId', isEqualTo: rating.doctorId)
           .get();
       
+      // Read the current user's existing rating document (if it exists)
+      final existingRatingSnapshot = await userRatingQuery.get();
+
+      // --- 2. PERFORM LOGIC WITH THE READ DATA ---
+
+      if (!doctorDoc.exists) {
+        throw Exception("Doctor does not exist!");
+      }
+
+      // Convert all ratings to a mutable list
       final allRatings = allRatingsSnapshot.docs
           .map((doc) => DoctorRating.fromFirestore(doc.data(), doc.id))
           .toList();
 
+      // Remove the user's old rating from the list if it exists, to avoid double-counting
       allRatings.removeWhere((r) => r.userId == rating.userId);
+      // Add the new rating to the list
       allRatings.add(rating);
 
+      // Recalculate the average and total
       final totalRatings = allRatings.length;
       final averageRating = totalRatings == 0
           ? 0.0
           : allRatings.fold<double>(0.0, (sum, item) => sum + item.rating) / totalRatings;
+      
+      final doctorProfile = DoctorProfile.fromFirestore(doctorDoc.data()?['doctorProfile']);
+      final updatedProfile = doctorProfile.copyWith(
+        averageRating: averageRating,
+        totalReviews: totalRatings,
+      );
 
-      final doctorDoc = await transaction.get(doctorRef);
-      if (doctorDoc.exists) {
-        final doctorProfile = DoctorProfile.fromFirestore(doctorDoc.data()?['doctorProfile']);
-        final updatedProfile = doctorProfile.copyWith(
-          averageRating: averageRating,
-          totalReviews: totalRatings,
-        );
-        transaction.update(doctorRef, {'doctorProfile': updatedProfile.toFirestore()});
+      // --- 3. PERFORM ALL WRITE OPERATIONS LAST ---
+      
+      // Update or create the user's specific rating document
+      if (existingRatingSnapshot.docs.isNotEmpty) {
+        // If the user has an existing rating, update it
+        final existingRatingRef = existingRatingSnapshot.docs.first.reference;
+        transaction.update(existingRatingRef, rating.toFirestore());
+      } else {
+        // If it's a new rating, create a new document
+        final newRatingRef = ratingsColRef.doc();
+        transaction.set(newRatingRef, rating.toFirestore());
       }
+
+      // Update the doctor's aggregated profile data
+      transaction.update(doctorRef, {'doctorProfile': updatedProfile.toFirestore()});
     });
   }
   
@@ -171,25 +194,19 @@ class FirestoreService {
         .map((snapshot) => snapshot.docs.map((doc) => doc.data()).toList());
   }
 
-  /// Updates an existing medicine reminder.
-  /// The MedicineModel must have a valid ID.
   Future<void> updateMedicine(MedicineModel medicine) async {
     if (medicine.id == null) {
       throw ArgumentError("Medicine ID cannot be null when updating.");
     }
-    // vvvvvvvvvv THE FIX IS APPLIED HERE vvvvvvvvvv
     await _getMedicinesCollection()
-        .doc(medicine.id!) // Use ! to assert non-null
+        .doc(medicine.id!)
         .update(medicine.toFirestore());
-    // ^^^^^^^^^^ THE FIX IS APPLIED HERE ^^^^^^^^^^
   }
 
-  /// Deletes a medicine reminder from Firestore.
   Future<void> deleteMedicine(String medicineId) async {
     await _getMedicinesCollection().doc(medicineId).delete();
   }
 
-  // ... (all other methods like CHAT and COMMUNITY POST operations remain the same) ...
   // ---------------- CHAT OPERATIONS ----------------
   CollectionReference _getChatCollection(String userId) {
     return _db.collection('users').doc(userId).collection('chatHistory');
@@ -242,7 +259,8 @@ class FirestoreService {
       });
     }
   }
-    //--------- THIS METHOD TO SAVE THE DIET CHAT ENTRY----------
+  
+  // ---------------- DIET SUGGESTION OPERATIONS ----------------
     
   Future<void> saveDietSuggestion(DietChatEntry suggestion) async {
     try {
@@ -252,10 +270,30 @@ class FirestoreService {
           .collection('diet_suggestions')
           .add(suggestion.toFirestore());
     } catch (e) {
-      // It's good practice to handle potential errors
       print("❌ Error saving diet suggestion: $e");
-      rethrow; // Re-throw the error to be caught by the UI
+      rethrow;
     }
   }
 
+  // ✅ ADDED THIS METHOD TO GET THE LATEST DIET SUGGESTION
+  Future<DietChatEntry?> getLatestDietSuggestion(String userId) async {
+    try {
+      final snapshot = await _db
+          .collection('users')
+          .doc(userId)
+          .collection('diet_suggestions')
+          .orderBy('timestamp', descending: true) // Get the newest first
+          .limit(1) // We only need the most recent one
+          .get();
+
+      if (snapshot.docs.isEmpty) {
+        return null; // No suggestions found
+      }
+      // Convert the first document to a DietChatEntry object and return it
+      return DietChatEntry.fromFirestore(snapshot.docs.first);
+    } catch (e) {
+      print("❌ Error fetching latest diet suggestion: $e");
+      return null;
+    }
+  }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter_rating_bar/flutter_rating_bar.dart';
+import 'package:provider/provider.dart';
 
 import '../../../models/user_model.dart'; // Make sure this path is correct for your project
 import '../../../services/firestore_service.dart';
@@ -55,6 +56,11 @@ class DoctorDetailScreen extends StatelessWidget {
           TextButton(onPressed: () => Navigator.pop(ctx), child: const Text("Cancel")),
           ElevatedButton(
             onPressed: () async {
+                            final firestoreService = context.read<FirestoreService>();
+              
+              // 1. Fetch the current user's profile from Firestore to get their name
+              final currentUserModel = await firestoreService.getUser(user.uid);
+              final patientName = currentUserModel?.name ?? "Anonymous";
               final newRating = DoctorRating(
                 id: existingRating?.id, // FirestoreService handles if this is null
                 doctorId: doctor.uid,
@@ -63,7 +69,7 @@ class DoctorDetailScreen extends StatelessWidget {
                 comment: commentController.text.trim(),
                 createdAt: DateTime.now(),
                 // Display name of the user is saved here
-                patientName: user.displayName ?? "Anonymous",
+                patientName: patientName,
               );
               await FirestoreService().addOrUpdateDoctorRating(newRating);
               Navigator.pop(ctx);

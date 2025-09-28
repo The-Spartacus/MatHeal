@@ -7,7 +7,7 @@ import 'package:provider/provider.dart';
 import 'package:image_picker/image_picker.dart';
 import '../../providers/user_provider.dart';
 import '../../services/firestore_service.dart';
-import '../../services/image_upload_service.dart'; // Import the new service
+import '../../services/image_upload_service.dart';
 import '../../models/user_model.dart';
 import '../../utils/theme.dart';
 
@@ -23,8 +23,10 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _ageController = TextEditingController();
   final _weeksController = TextEditingController();
   final List<String> _selectedConditions = [];
+  
   bool _isLoading = false;
-  bool _isUploadingImage = false; // New state for image upload
+  bool _isUploadingImage = false;
+  bool _isEditing = false;
 
   final List<String> _availableConditions = [
     'Anemia', 'Diabetes', 'Hypertension', 'Gestational diabetes',
@@ -38,18 +40,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   void _loadProfileData() {
-    // Use post-frame callback to ensure context is available
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) {
-        final userProvider = context.read<UserProvider>();
-        final profile = userProvider.profile;
-
+        final profile = context.read<UserProvider>().profile;
         if (profile != null) {
           _ageController.text = profile.age?.toString() ?? '';
           _weeksController.text = profile.weeksPregnant?.toString() ?? '';
-          // Clear and add to avoid duplicates on rebuilds
           _selectedConditions.clear();
           _selectedConditions.addAll(profile.conditions);
+          setState(() {});
         }
       }
     });
@@ -62,19 +61,16 @@ class _ProfileScreenState extends State<ProfileScreen> {
     super.dispose();
   }
 
-  Future<void> _saveProfile({String? newAvatarUrl}) async {
-    if (!_formKey.currentState!.validate()) return;
+  Future<void> _saveProfile({String? newAvatarUrl, bool exitEditMode = true}) async {
+    if (_isEditing && !_formKey.currentState!.validate()) return;
 
     setState(() => _isLoading = true);
-
     try {
       final userProvider = context.read<UserProvider>();
       final user = userProvider.user;
       if (user == null) throw Exception('User not found');
 
-      // Use existing avatarUrl unless a new one is provided
       final finalAvatarUrl = newAvatarUrl ?? userProvider.profile?.avatarUrl;
-
       final updatedProfile = UserProfile(
         uid: user.uid,
         age: int.tryParse(_ageController.text),
@@ -87,19 +83,20 @@ class _ProfileScreenState extends State<ProfileScreen> {
       userProvider.updateProfile(updatedProfile);
 
       HapticFeedback.lightImpact();
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
+      if (exitEditMode) {
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
           content: Text('Profile updated successfully!'),
           backgroundColor: AppColors.success,
-        ),
-      );
+        ));
+      }
+      if (mounted && exitEditMode) {
+        setState(() => _isEditing = false);
+      }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating profile: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error updating profile: $e'),
+        backgroundColor: AppColors.error,
+      ));
     } finally {
       if (mounted) {
         setState(() => _isLoading = false);
@@ -110,146 +107,206 @@ class _ProfileScreenState extends State<ProfileScreen> {
   Future<void> _pickAndUploadImage() async {
     setState(() => _isUploadingImage = true);
     try {
-      final picker = ImagePicker();
-      final image = await picker.pickImage(
+      final image = await ImagePicker().pickImage(
         source: ImageSource.gallery,
         maxWidth: 512, maxHeight: 512, imageQuality: 80,
       );
-
       if (image != null) {
-        final imageFile = File(image.path);
-        // Instantiate and use the upload service
-        final imageUrl = await ImageUploadService().uploadImage(imageFile);
-
-        // Save the profile with the new URL
-        await _saveProfile(newAvatarUrl: imageUrl);
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Profile picture updated!'),
-            backgroundColor: AppColors.success,
-          ),
-        );
+        final imageUrl = await ImageUploadService().uploadImage(File(image.path));
+        await _saveProfile(newAvatarUrl: imageUrl, exitEditMode: false);
+        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+          content: Text('Profile picture updated!'),
+          backgroundColor: AppColors.success,
+        ));
       }
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error updating image: $e'),
-          backgroundColor: AppColors.error,
-        ),
-      );
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+        content: Text('Error updating image: $e'),
+        backgroundColor: AppColors.error,
+      ));
     } finally {
-      if(mounted) {
-        setState(() => _isUploadingImage = false);
-      }
+      if (mounted) setState(() => _isUploadingImage = false);
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    // Main build method remains largely the same
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Profile'),
-        backgroundColor: AppColors.background,
-        actions: [
-          TextButton(
-            onPressed: _isLoading ? null : () => _saveProfile(),
-            child: _isLoading
-                ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
-                : const Text('Save'),
-          ),
-        ],
+        title: const Text('My Profile'),
+        actions: _isEditing
+            ? [
+                TextButton(
+                  onPressed: _isLoading ? null : () {
+                    _loadProfileData();
+                    setState(() => _isEditing = false);
+                  },
+                  child: const Text('Cancel'),
+                ),
+                TextButton(
+                  onPressed: _isLoading ? null : () => _saveProfile(),
+                  child: _isLoading
+                      ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2))
+                      : const Text('Save'),
+                ),
+              ]
+            : [
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined),
+                  onPressed: () => setState(() => _isEditing = true),
+                  tooltip: 'Edit Profile',
+                ),
+              ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            children: [
-              _buildProfileHeader(),
-              const SizedBox(height: 32),
-              _buildBasicInfo(),
-              const SizedBox(height: 24),
-              _buildConditionsSection(),
-              // ... Rest of the UI remains the same
-            ],
-          ),
-        ),
-      ),
+      body: _isEditing ? _buildEditView() : _buildDisplayView(),
     );
   }
 
-  Widget _buildProfileHeader() {
+  // --- WIDGETS FOR DISPLAY (READ-ONLY) MODE ---
+
+  Widget _buildDisplayView() {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
         final user = userProvider.user;
         final profile = userProvider.profile;
 
-        return Card(
-          elevation: 2,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              children: [
-                Stack(
-                  children: [
-                    CircleAvatar(
-                      radius: 50,
-                      backgroundColor: AppColors.primary.withOpacity(0.1),
-                      backgroundImage: profile?.avatarUrl != null
-                          ? NetworkImage(profile!.avatarUrl!)
-                          : null,
-                      child: (profile?.avatarUrl == null && !_isUploadingImage)
-                          ? const Icon(Icons.person, size: 50, color: AppColors.primary)
-                          : (_isUploadingImage
-                              ? const CircularProgressIndicator()
-                              : null),
-                    ),
-                    Positioned(
-                      bottom: 0,
-                      right: 0,
-                      child: GestureDetector(
-                        onTap: _isUploadingImage ? null : _pickAndUploadImage,
-                        child: Container(
-                          width: 32, height: 32,
-                          decoration: const BoxDecoration(
-                            color: AppColors.primary,
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.camera_alt, color: Colors.white, size: 18,
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  user?.name ?? 'User',
-                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                        fontWeight: FontWeight.bold,
-                      ),
-                ),
-                Text(
-                  user?.email ?? '',
-                  style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                        color: AppColors.textSecondary,
-                      ),
-                ),
-              ],
-            ),
+        if (user == null) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        return SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              _buildAvatar(), // Avatar is shared between views
+              const SizedBox(height: 16),
+              Text(
+                user.name,
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+              ),
+              Text(
+                user.email,
+                style: Theme.of(context).textTheme.bodyMedium?.copyWith(color: AppColors.textSecondary),
+              ),
+              const SizedBox(height: 32),
+              if (profile != null) _buildDisplayInfoCard(profile),
+            ],
           ),
         );
       },
     );
   }
 
-  // _buildBasicInfo, _buildConditionsSection, and other widgets remain unchanged.
-  // ... (Paste the rest of the unchanged widgets from your original code here)
-  Widget _buildBasicInfo() {
+  Widget _buildDisplayInfoCard(UserProfile profile) {
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Column(
+        children: [
+          _buildDisplayTile(
+            icon: Icons.cake_outlined,
+            title: 'Age',
+            subtitle: profile.age != null ? '${profile.age} years' : 'Not specified',
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          _buildDisplayTile(
+            icon: Icons.child_care_outlined,
+            title: 'Weeks Pregnant',
+            subtitle: profile.weeksPregnant != null ? '${profile.weeksPregnant} weeks' : 'Not specified',
+          ),
+          const Divider(height: 1, indent: 16, endIndent: 16),
+          _buildDisplayConditions(profile.conditions),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDisplayTile({required IconData icon, required String title, required String subtitle}) {
+    return ListTile(
+      leading: Icon(icon, color: AppColors.primary),
+      title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: Text(subtitle, style: Theme.of(context).textTheme.bodyMedium),
+    );
+  }
+
+  Widget _buildDisplayConditions(List<String> conditions) {
+    return ListTile(
+      leading: const Icon(Icons.monitor_heart_outlined, color: AppColors.primary),
+      title: const Text('Health Conditions', style: TextStyle(fontWeight: FontWeight.bold)),
+      subtitle: conditions.isEmpty
+          ? const Text('None specified')
+          : Padding(
+              padding: const EdgeInsets.only(top: 8.0),
+              child: Wrap(
+                spacing: 8.0,
+                runSpacing: 4.0,
+                children: conditions.map((condition) => Chip(
+                  label: Text(condition),
+                  backgroundColor: AppColors.primary.withOpacity(0.1),
+                  labelStyle: const TextStyle(color: AppColors.primary, fontWeight: FontWeight.w500),
+                  side: BorderSide.none,
+                )).toList(),
+              ),
+            ),
+    );
+  }
+
+  // --- WIDGETS FOR EDITING MODE ---
+
+  Widget _buildEditView() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.all(16),
+      child: Form(
+        key: _formKey,
+        child: Column(
+          children: [
+            _buildAvatar(),
+            const SizedBox(height: 32),
+            _buildBasicInfoForm(),
+            const SizedBox(height: 24),
+            _buildConditionsForm(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAvatar() {
+    return Consumer<UserProvider>(
+      builder: (context, userProvider, child) {
+        final avatarUrl = userProvider.profile?.avatarUrl;
+        return Stack(
+          children: [
+            CircleAvatar(
+              radius: 50,
+              backgroundColor: AppColors.primary.withOpacity(0.1),
+              backgroundImage: avatarUrl != null ? NetworkImage(avatarUrl) : null,
+              child: (_isUploadingImage)
+                  ? const CircularProgressIndicator()
+                  : (avatarUrl == null
+                      ? const Icon(Icons.person, size: 50, color: AppColors.primary)
+                      : null),
+            ),
+            if (_isEditing)
+              Positioned(
+                bottom: 0,
+                right: 0,
+                child: GestureDetector(
+                  onTap: _isUploadingImage ? null : _pickAndUploadImage,
+                  child: Container(
+                    width: 32, height: 32,
+                    decoration: const BoxDecoration(color: AppColors.primary, shape: BoxShape.circle),
+                    child: const Icon(Icons.camera_alt, color: Colors.white, size: 18),
+                  ),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildBasicInfoForm() {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -263,31 +320,15 @@ class _ProfileScreenState extends State<ProfileScreen> {
             TextFormField(
               controller: _ageController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Age', prefixIcon: Icon(Icons.cake), suffixText: 'years'),
-              validator: (value) {
-                if (value != null && value.isNotEmpty) {
-                  final age = int.tryParse(value);
-                  if (age == null || age < 16 || age > 50) {
-                    return 'Please enter a valid age (16-50)';
-                  }
-                }
-                return null;
-              },
+              decoration: const InputDecoration(labelText: 'Age', prefixIcon: Icon(Icons.cake_outlined)),
+              validator: (v) => (v != null && v.isNotEmpty && (int.tryParse(v) ?? 0) < 18) ? 'Must be 18 or older' : null,
             ),
             const SizedBox(height: 16),
             TextFormField(
               controller: _weeksController,
               keyboardType: TextInputType.number,
-              decoration: const InputDecoration(labelText: 'Weeks Pregnant', prefixIcon: Icon(Icons.child_care), suffixText: 'weeks'),
-              validator: (value) {
-                if (value != null && value.isNotEmpty) {
-                  final weeks = int.tryParse(value);
-                  if (weeks == null || weeks < 1 || weeks > 42) {
-                    return 'Please enter valid pregnancy weeks (1-42)';
-                  }
-                }
-                return null;
-              },
+              decoration: const InputDecoration(labelText: 'Weeks Pregnant', prefixIcon: Icon(Icons.child_care_outlined)),
+              validator: (v) => (v != null && v.isNotEmpty && (int.tryParse(v) ?? 0) > 42) ? 'Cannot be more than 42' : null,
             ),
           ],
         ),
@@ -295,7 +336,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
-  Widget _buildConditionsSection() {
+  Widget _buildConditionsForm() {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -306,7 +347,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           children: [
             Text('Health Conditions', style: Theme.of(context).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold)),
             const SizedBox(height: 8),
-            Text('Select any conditions that apply. This helps us provide personalized recommendations.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
+            Text('Select any conditions that apply.', style: Theme.of(context).textTheme.bodySmall?.copyWith(color: AppColors.textSecondary)),
             const SizedBox(height: 16),
             Wrap(
               spacing: 8, runSpacing: 8,
@@ -325,9 +366,6 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     });
                     HapticFeedback.selectionClick();
                   },
-                  backgroundColor: Colors.grey.shade100,
-                  selectedColor: AppColors.primary.withOpacity(0.2),
-                  checkmarkColor: AppColors.primary,
                 );
               }).toList(),
             ),
