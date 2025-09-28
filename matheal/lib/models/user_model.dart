@@ -1,5 +1,6 @@
+// ---------------- USER MODEL ----------------
+import 'package:cloud_firestore/cloud_firestore.dart';
 
-/// ---------------- USER MODEL ----------------
 class UserModel {
   final String uid;
   final String name;
@@ -7,7 +8,6 @@ class UserModel {
   final DateTime createdAt;
   final String role; // "user" or "doctor"
   final DoctorProfile? doctorProfile;
-// 👈 present only if doctor
 
   UserModel({
     required this.uid,
@@ -30,10 +30,12 @@ class UserModel {
           : null,
     );
   }
+
   String? get specialization => doctorProfile?.specialization;
   String? get hospitalName => doctorProfile?.hospitalName;
-  // Getter for doctor's avatar
   String? get avatarUrl => doctorProfile?.avatarUrl;
+  double get averageRating => doctorProfile?.averageRating ?? 0.0;
+  int get totalReviews => doctorProfile?.totalReviews ?? 0;
 
   Map<String, dynamic> toFirestore() {
     return {
@@ -65,26 +67,42 @@ class UserModel {
   }
 }
 
-/// ---------------- DOCTOR PROFILE (UPDATED) ----------------
+// ---------------- DOCTOR PROFILE (ENHANCED) ----------------
 class DoctorProfile {
   final String specialization;
   final String hospitalName;
-  final String? avatarUrl; // ✅ ADDED
+  final String? avatarUrl;
+  final String? bio;
+  final int? yearsOfExperience;
+  final String? qualifications;
+  final Map<String, bool> availableTimings;
+  final double averageRating;
+  final int totalReviews;
 
   DoctorProfile({
     required this.specialization,
     required this.hospitalName,
-    this.avatarUrl, // ✅ ADDED
+    this.avatarUrl,
+    this.bio,
+    this.yearsOfExperience,
+    this.qualifications,
+    this.availableTimings = const {'morning': false, 'afternoon': false, 'evening': false},
+    this.averageRating = 0.0,
+    this.totalReviews = 0,
   });
 
   factory DoctorProfile.fromFirestore(Map<String, dynamic>? data) {
-    if (data == null) {
-      return DoctorProfile(specialization: "", hospitalName: "");
-    }
+    if (data == null) return DoctorProfile(specialization: "", hospitalName: "");
     return DoctorProfile(
       specialization: data['specialization'] ?? '',
       hospitalName: data['hospitalName'] ?? '',
-      avatarUrl: data['avatarUrl'], // ✅ ADDED
+      avatarUrl: data['avatarUrl'],
+      bio: data['bio'],
+      yearsOfExperience: data['yearsOfExperience'],
+      qualifications: data['qualifications'],
+      availableTimings: Map<String, bool>.from(data['availableTimings'] ?? {}),
+      averageRating: (data['averageRating'] ?? 0.0).toDouble(),
+      totalReviews: data['totalReviews'] ?? 0,
     );
   }
 
@@ -92,22 +110,85 @@ class DoctorProfile {
     return {
       'specialization': specialization,
       'hospitalName': hospitalName,
-      'avatarUrl': avatarUrl, // ✅ ADDED
+      'avatarUrl': avatarUrl,
+      'bio': bio,
+      'yearsOfExperience': yearsOfExperience,
+      'qualifications': qualifications,
+      'availableTimings': availableTimings,
+      'averageRating': averageRating,
+      'totalReviews': totalReviews,
     };
   }
 
-  DoctorProfile copyWith({ // ✅ ADDED copyWith for easier updates
+  DoctorProfile copyWith({
     String? specialization,
     String? hospitalName,
     String? avatarUrl,
+    String? bio,
+    int? yearsOfExperience,
+    String? qualifications,
+    Map<String, bool>? availableTimings,
+    double? averageRating,
+    int? totalReviews,
   }) {
     return DoctorProfile(
       specialization: specialization ?? this.specialization,
       hospitalName: hospitalName ?? this.hospitalName,
       avatarUrl: avatarUrl ?? this.avatarUrl,
+      bio: bio ?? this.bio,
+      yearsOfExperience: yearsOfExperience ?? this.yearsOfExperience,
+      qualifications: qualifications ?? this.qualifications,
+      availableTimings: availableTimings ?? this.availableTimings,
+      averageRating: averageRating ?? this.averageRating,
+      totalReviews: totalReviews ?? this.totalReviews,
     );
   }
 }
+
+// ---------------- DOCTOR RATING MODEL ----------------
+class DoctorRating {
+  final String? id;
+  final String doctorId;
+  final String userId;
+  final double rating;
+  final String? comment;
+  final DateTime createdAt;
+  final String patientName;
+
+  DoctorRating({
+    this.id,
+    required this.doctorId,
+    required this.userId,
+    required this.rating,
+    this.comment,
+    required this.createdAt,
+    required this.patientName,
+  });
+
+  factory DoctorRating.fromFirestore(Map<String, dynamic> data, String id) {
+    return DoctorRating(
+      id: id,
+      doctorId: data['doctorId'] ?? '',
+      userId: data['userId'] ?? '',
+      rating: (data['rating'] ?? 0.0).toDouble(),
+      comment: data['comment'],
+      createdAt: (data['createdAt'] as Timestamp).toDate(),
+      patientName: data['patientName'] ?? 'Anonymous',
+    );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'doctorId': doctorId,
+      'userId': userId,
+      'rating': rating,
+      'comment': comment,
+      'createdAt': createdAt,
+      'patientName': patientName,
+    };
+  }
+}
+
 
 
 /// ---------------- USER PROFILE ----------------
@@ -162,88 +243,3 @@ class UserProfile {
     );
   }
 }
-
-/// ---------------- REMINDER MODEL ----------------
-class ReminderModel {
-  final String? id;
-  final String uid;
-  final String type;
-  final String title;
-  final String notes;
-  final DateTime time;
-  final String repeatInterval;
-  final Map<String, dynamic> meta;
-
-  ReminderModel({
-    this.id,
-    required this.uid,
-    required this.type,
-    required this.title,
-    required this.notes,
-    required this.time,
-    required this.repeatInterval,
-    this.meta = const {},
-  });
-
-  factory ReminderModel.fromFirestore(Map<String, dynamic> data, String id) {
-    return ReminderModel(
-      id: id,
-      uid: data['uid'] ?? '',
-      type: data['type'] ?? '',
-      title: data['title'] ?? '',
-      notes: data['notes'] ?? '',
-      time: (data['time'] as dynamic)?.toDate() ?? DateTime.now(),
-      repeatInterval: data['repeatInterval'] ?? 'none',
-      meta: Map<String, dynamic>.from(data['meta'] ?? {}),
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'uid': uid,
-      'type': type,
-      'title': title,
-      'notes': notes,
-      'time': time,
-      'repeatInterval': repeatInterval,
-      'meta': meta,
-    };
-  }
-}
-
-/// ---------------- CONSUMED MEDICINE ----------------
-class ConsumedMedicine {
-  final String? id;
-  final String uid;
-  final String reminderId;
-  final String name;
-  final DateTime consumedAt;
-
-  ConsumedMedicine({
-    this.id,
-    required this.uid,
-    required this.reminderId,
-    required this.name,
-    required this.consumedAt,
-  });
-
-  factory ConsumedMedicine.fromFirestore(Map<String, dynamic> data, String id) {
-    return ConsumedMedicine(
-      id: id,
-      uid: data['uid'] ?? '',
-      reminderId: data['reminderId'] ?? '',
-      name: data['name'] ?? '',
-      consumedAt: (data['consumedAt'] as dynamic)?.toDate() ?? DateTime.now(),
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'uid': uid,
-      'reminderId': reminderId,
-      'name': name,
-      'consumedAt': consumedAt,
-    };
-  }
-}
-

@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../../models/appointment_model.dart';
-import '../../models/user_model.dart';
-import '../../services/firestore_service.dart';
-import '../../services/appointment_service.dart';
-import '../../widgets/appointment_card.dart'; // ✅ IMPORT THE NEW WIDGET
+import '../../../models/appointment_model.dart';
+import '../../../models/user_model.dart';
+import '../../../services/firestore_service.dart';
+import '../../../services/appointment_service.dart';
+import '../../../widgets/appointment_card.dart'; // ✅ IMPORT THE NEW WIDGET
 
 class DoctorAppointmentsScreen extends StatefulWidget {
   const DoctorAppointmentsScreen({super.key});

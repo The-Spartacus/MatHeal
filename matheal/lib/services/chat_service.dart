@@ -4,7 +4,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ChatService {
   // ✅ Updated model and base URL for Gemini
-  static const String _model = 'gemini-1.5-flash-latest';
+  static const String _model = 'gemini-2.5-pro';
   static const String _baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/$_model:generateContent';
 
   Future<String> sendMessage(String message) async {
@@ -44,7 +44,7 @@ class ChatService {
           },
           'generationConfig': {
             'temperature': 0.7,
-            'maxOutputTokens': 500,
+            'maxOutputTokens': 5000,
           }
         }),
       );

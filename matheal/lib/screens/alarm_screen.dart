@@ -1,10 +1,17 @@
 // lib/screens/alarm_screen.dart
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:matheal/models/medicine_model.dart';
+import 'package:matheal/providers/user_provider.dart';
+import 'package:matheal/services/firestore_service.dart';
+import 'package:provider/provider.dart';
 
 class AlarmScreen extends StatefulWidget {
   final String medicineName;
-  const AlarmScreen({super.key, required this.medicineName});
+  final int alarmId; // Added to help identify and potentially cancel the *next* scheduled alarm
+
+  // Updated constructor to accept alarmId
+  const AlarmScreen({super.key, required this.medicineName, required this.alarmId});
 
   @override
   State<AlarmScreen> createState() => _AlarmScreenState();
@@ -21,12 +28,59 @@ class _AlarmScreenState extends State<AlarmScreen> {
 
   Future<void> _playAlarmSound() async {
     try {
-      await _player.setAsset('assets/audio/iphone_alarm.mp3');
+      // Ensure you have this audio file in assets/audio/
+      await _player.setAsset('assets/audio/iphone_alarm.mp3'); 
       _player.setLoopMode(LoopMode.one);
       await _player.play();
     } catch (e) {
       debugPrint('Error loading or playing audio: $e');
     }
+  }
+
+  void _markAsTakenAndDismiss() async { // 💡 Changed to async
+    _player.stop();
+
+    try {
+      // 1. Get current user and services via Provider
+      final userProvider = context.read<UserProvider>();
+      final firestoreService = context.read<FirestoreService>();
+      final user = userProvider.user;
+
+      if (user == null) {
+        debugPrint("[AlarmScreen] ERROR: User not logged in. Cannot save consumed medicine.");
+        // Optionally show a message to the user
+        return;
+      }
+      
+      // 2. Create the ConsumedMedicine model
+      final consumedMedicine = ConsumedMedicine(
+        uid: user.uid,
+        reminderId: widget.alarmId.toString(), // Use alarmId as the reminderId (or generate a unique one if needed)
+        name: widget.medicineName,
+        consumedAt: DateTime.now(),
+      );
+
+      // 3. Save the record to Firestore
+      await firestoreService.addConsumedMedicine(consumedMedicine);
+      
+      debugPrint("MEDICINE TAKEN: ${widget.medicineName} saved to Firestore successfully! ✅");
+
+    } catch (e) {
+      debugPrint("[AlarmScreen] ERROR saving consumed medicine: $e");
+    } finally {
+      // Dismiss the alarm screen regardless of save success (after trying to save)
+      Navigator.of(context).pop();
+    }
+  }
+
+// ... rest of the file
+
+  // New method to handle the "Dismiss/Snooze" action
+  void _dismissAlarm() {
+    _player.stop();
+    // ⚠️ Optional: You could implement snooze logic here, but for simplicity, 
+    // it just dismisses the screen.
+    Navigator.of(context).pop();
   }
 
   @override
@@ -98,30 +152,58 @@ class _AlarmScreenState extends State<AlarmScreen> {
 
                   const SizedBox(height: 60),
 
-                  // Dismiss button
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.redAccent,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 40,
-                        vertical: 18,
+                  // --- BUTTONS ROW START ---
+                  Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      // 1. Mark as Taken Button (Primary Action)
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.teal, // Primary color
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 25,
+                            vertical: 18,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 5,
+                        ),
+                        onPressed: _markAsTakenAndDismiss, // New method call
+                        icon: const Icon(Icons.check_circle_outline, size: 26),
+                        label: const Text(
+                          'Mark as Taken',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
+                      
+                      const SizedBox(width: 15),
+
+                      // 2. Dismiss Button (Secondary Action)
+                      ElevatedButton.icon(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Colors.redAccent,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 25,
+                            vertical: 18,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(30),
+                          ),
+                          elevation: 5,
+                        ),
+                        onPressed: _dismissAlarm, // New method call
+                        icon: const Icon(Icons.close, size: 26),
+                        label: const Text(
+                          'Dismiss',
+                          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                        ),
                       ),
-                      elevation: 5,
-                    ),
-                    onPressed: () {
-                      _player.stop();
-                      Navigator.of(context).pop();
-                    },
-                    icon: const Icon(Icons.stop_circle_outlined, size: 26),
-                    label: const Text(
-                      'Dismiss Alarm',
-                      style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
-                    ),
+                    ],
                   ),
+                  // --- BUTTONS ROW END ---
                 ],
               ),
             ),

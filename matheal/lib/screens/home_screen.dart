@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:matheal/screens/features/book_appointment_screen.dart';
 import 'package:matheal/screens/features/community_screen.dart';
+import 'package:matheal/screens/features/medication_calendar_screen.dart';
 import 'package:matheal/screens/features/user_appointments_screen.dart';
 import 'package:matheal/services/auth_service.dart';
 import 'package:matheal/services/firestore_service.dart';
@@ -14,7 +15,6 @@ import '../providers/user_provider.dart';
 import '../providers/theme_provider.dart';
 import '../utils/theme.dart';
 import 'features/medicine_reminders_screen.dart';
-import 'features/consumed_medicines_screen.dart';
 import 'features/diet_suggestions_screen.dart';
 import 'features/exercise_suggestions_screen.dart';
 import 'features/chat_screen.dart';
@@ -147,7 +147,7 @@ class _HomeScreenState extends State<HomeScreen> {
             builder: (context) {
               return IconButton(
                 icon: const Icon(
-                    Icons.settings_outlined), // Changed icon to settings
+                    Icons.menu), // Changed icon to settings
                 onPressed: () {
                   Scaffold.of(context).openEndDrawer(); // Opens the end drawer
                 },
@@ -204,7 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
             width: double.infinity,
             decoration: BoxDecoration(
               gradient: const LinearGradient(
-                colors: [AppColors.primary, Color(0xFF66BB6A)],
+                colors: [Color.fromARGB(255, 50, 138, 182), Color.fromARGB(255, 142, 221, 226)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -413,70 +413,159 @@ Widget _buildLogoutTile(BuildContext context) {
   );
 }
 
+/// A simple data model for a feature card on the home screen.
+
 Widget _buildFeatureGrid(BuildContext context) {
+  final titleStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
+        fontWeight: FontWeight.bold,
+        color: const Color.fromARGB(255, 85, 172, 255),
+      );
+
+  final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: const Color.fromARGB(255, 148, 199, 247),
+      );
+
   final features = [
-    FeatureCard(title: 'Medicine Reminders', subtitle: 'Track your medications', icon: Icons.medication, color: const Color(0xFFE3F2FD), iconColor: const Color(0xFF1976D2), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const MedicineRemindersScreen()))),
-    FeatureCard(title: 'Consumed Medicines', subtitle: 'View medication history', icon: Icons.history, color: const Color(0xFFF3E5F5), iconColor: const Color(0xFF7B1FA2), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ConsumedMedicinesScreen()))),
-    FeatureCard(title: 'Doctor Appointments', subtitle: 'Schedule & track visits', icon: Icons.local_hospital, color: const Color(0xFFE8F5E8), iconColor: const Color(0xFF388E3C), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const UserAppointmentsScreen()))),
-    FeatureCard(title: 'Book Appointments', subtitle: 'Schedule Appointments', icon: Icons.save, color: const Color(0xFFE8F5E8), iconColor: const Color(0xFF388E3C), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const BookAppointmentScreen()))),
-    FeatureCard(title: 'matcomunity', subtitle: 'share happiest moment', icon: Icons.telegram, color: const Color(0xFFFFF3E0), iconColor: const Color(0xFFF57C00), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const CommunityScreen()))),
-    FeatureCard(title: 'Diet Suggestions', subtitle: 'Personalized nutrition', icon: Icons.dining, color: const Color(0xFFF1F8E9), iconColor: const Color(0xFF689F38), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const DietSuggestionsScreen()))),
-    FeatureCard(title: 'Exercise Suggestions', subtitle: 'Safe workouts', icon: Icons.fitness_center, color: const Color(0xFFE0F2F1), iconColor: const Color(0xFF00695C), onTap: () => Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ExerciseSuggestionsScreen()))),
+    _Feature(
+      title: 'Medicine Reminders',
+      subtitle: 'Track your medications',
+      icon: Icons.medication_outlined,
+      backgroundColor: const Color(0xFFE3F2FD),
+      iconColor: const Color(0xFF1976D2),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MedicineRemindersScreen())),
+    ),
+    _Feature(
+      title: 'Medication History',
+      subtitle: 'View consumption log',
+      icon: Icons.history_edu_outlined,
+      backgroundColor: const Color(0xFFF3E5F5),
+      iconColor: const Color(0xFF7B1FA2),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MedicationCalendarScreen())),
+    ),
+    _Feature(
+      title: 'Your Appointments',
+      subtitle: 'Manage scheduled visits',
+      icon: Icons.calendar_month_outlined,
+      backgroundColor: const Color(0xFFE8F5E8),
+      iconColor: const Color(0xFF388E3C),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const UserAppointmentsScreen())),
+    ),
+    _Feature(
+      title: 'Book an Appointment',
+      subtitle: 'Find a specialist',
+      icon: Icons.edit_calendar_outlined,
+      backgroundColor: const Color(0xFFE0F7FA),
+      iconColor: const Color(0xFF00838F),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BookAppointmentScreen())),
+    ),
+    _Feature(
+      title: 'MatCommunity',
+      subtitle: 'Share your moments',
+      icon: Icons.connect_without_contact_outlined,
+      backgroundColor: const Color(0xFFFFF3E0),
+      iconColor: const Color(0xFFF57C00),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CommunityScreen())),
+    ),
+    _Feature(
+      title: 'Diet Suggestions',
+      subtitle: 'Personalized nutrition',
+      icon: Icons.restaurant_menu_outlined,
+      backgroundColor: const Color(0xFFF1F8E9),
+      iconColor: const Color(0xFF689F38),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DietSuggestionsScreen())),
+    ),
+    _Feature(
+      title: 'Exercise Guide',
+      subtitle: 'Pregnancy-safe workouts',
+      icon: Icons.fitness_center_outlined,
+      backgroundColor: const Color(0xFFE0F2F1),
+      iconColor: const Color(0xFF00695C),
+      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ExerciseSuggestionsScreen())),
+    ),
+     _Feature(
+      title: 'AI Health Assistant',
+      subtitle: 'Ask health questions',
+      icon: Icons.assistant_outlined,
+      backgroundColor: const Color(0xFFEDE7F6),
+      iconColor: const Color(0xFF5E35B1),
+      onTap: () {}, // Add navigation later
+    ),
   ];
 
-  return GridView.builder(
-    shrinkWrap: true,
-    physics: const NeverScrollableScrollPhysics(),
-    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 0.9, crossAxisSpacing: 16, mainAxisSpacing: 16),
-    itemCount: features.length,
-    itemBuilder: (context, index) {
-      final feature = features[index];
-      return Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        child: InkWell(
-          onTap: feature.onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Container(
-                  width: 60, height: 60,
-                  decoration: BoxDecoration(color: feature.color, borderRadius: BorderRadius.circular(16)),
-                  child: Icon(feature.icon, color: feature.iconColor, size: 32),
-                ),
-                const SizedBox(height: 12),
-                Text(feature.title, style: const TextStyle(fontWeight: FontWeight.w600, fontSize: 14, color: Color.fromARGB(255, 99, 180, 255)), textAlign: TextAlign.center, maxLines: 2, overflow: TextOverflow.ellipsis),
-                const SizedBox(height: 4),
-                Text(feature.subtitle, style: const TextStyle(fontSize: 12, color: Color.fromARGB(255, 161, 209, 253)), textAlign: TextAlign.center, maxLines: 1, overflow: TextOverflow.ellipsis),
-              ],
+  // The GridView is replaced with a horizontally scrolling ListView.
+  return SizedBox(
+    height: 170, // Constrain the height of the horizontal list
+    child: ListView.separated(
+      scrollDirection: Axis.horizontal,
+      padding: const EdgeInsets.symmetric(horizontal: 16), // Padding at the start and end of the list
+      itemCount: features.length,
+      separatorBuilder: (context, index) => const SizedBox(width: 12), // Adds space between items
+      itemBuilder: (context, index) {
+        final feature = features[index];
+        // Each item in the list is now a SizedBox with a fixed width.
+        return SizedBox(
+          width: 150,
+          child: Card(
+            elevation: 2,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            clipBehavior: Clip.antiAlias,
+            child: InkWell(
+              onTap: feature.onTap,
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: feature.backgroundColor,
+                    child: Icon(feature.icon, color: feature.iconColor, size: 28),
+                  ),
+                  const SizedBox(height: 12),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text(
+                      feature.title,
+                      style: titleStyle,
+                      textAlign: TextAlign.center,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text(
+                      feature.subtitle,
+                      style: subtitleStyle,
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ),
-        ),
-      );
-    },
+        );
+      },
+    ),
   );
 }
-
-
 }
-
-class FeatureCard {
+class _Feature {
   final String title;
   final String subtitle;
   final IconData icon;
-  final Color color;
+  final Color backgroundColor;
   final Color iconColor;
   final VoidCallback onTap;
 
-  FeatureCard({
+  const _Feature({
     required this.title,
     required this.subtitle,
     required this.icon,
-    required this.color,
+    required this.backgroundColor,
     required this.iconColor,
     required this.onTap,
   });
 }
+

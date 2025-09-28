@@ -1,14 +1,19 @@
+// lib/screens/features/medicine_reminders_screen.dart
+
 // ignore_for_file: deprecated_member_use, prefer_const_constructors, use_build_context_synchronously
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
-import 'package:timezone/timezone.dart' as tz;
+import 'package:intl/intl.dart';
+
+// Models and Services
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../providers/user_provider.dart';
-import '../../models/user_model.dart';
+import '../../models/medicine_model.dart';
+import 'medication_calendar_screen.dart';
 import '../../utils/theme.dart';
+
 
 class MedicineRemindersScreen extends StatefulWidget {
   const MedicineRemindersScreen({super.key});
@@ -21,8 +26,7 @@ class MedicineRemindersScreen extends StatefulWidget {
 class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
   @override
   Widget build(BuildContext context) {
-    final userProvider = context.watch<UserProvider>();
-    final user = userProvider.user;
+    final user = context.watch<UserProvider>().user;
 
     if (user == null) {
       return const Scaffold(
@@ -33,59 +37,43 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
     return Scaffold(
       appBar: AppBar(
         title: const Text('Medicine Reminders'),
-        backgroundColor: AppColors.background,
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.history),
+            tooltip: 'Medication History',
+            onPressed: () {
+              // vvvvvvvvvv THE NAVIGATION IS UPDATED HERE vvvvvvvvvv
+              Navigator.of(context).push(MaterialPageRoute(
+                builder: (_) => const MedicationCalendarScreen(), // UPDATED
+              ));
+              // ^^^^^^^^^^ THE NAVIGATION IS UPDATED HERE ^^^^^^^^^^
+            },
+          ),
+        ],
       ),
-      body: StreamBuilder<List<ReminderModel>>(
-        stream: context.read<FirestoreService>().getReminders(user.uid),
+      // ... rest of the file remains the same
+      body: StreamBuilder<List<MedicineModel>>(
+        stream: context.read<FirestoreService>().getMedicines(user.uid),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(child: CircularProgressIndicator());
           }
-
           if (snapshot.hasError) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  const Icon(
-                    Icons.error_outline,
-                    size: 64,
-                    color: AppColors.error,
-                  ),
-                  const SizedBox(height: 16),
-                  const Text('Error loading reminders'),
-                  TextButton(
-                    onPressed: () => setState(() {}),
-                    child: const Text('Retry'),
-                  ),
-                ],
-              ),
-            );
+            return Center(child: Text('Error: ${snapshot.error}'));
           }
-
-          final reminders =
-              snapshot.data?.where((r) => r.type == 'medicine').toList() ?? [];
-
-          if (reminders.isEmpty) {
+          if (!snapshot.hasData || snapshot.data!.isEmpty) {
             return _buildEmptyState();
           }
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              setState(() {});
-            },
-            child: ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: reminders.length,
-              itemBuilder: (context, index) {
-                return _buildReminderCard(reminders[index]);
-              },
-            ),
+          final medicines = snapshot.data!;
+          return ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: medicines.length,
+            itemBuilder: (context, index) => _buildMedicineCard(medicines[index]),
           );
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: _showAddReminderDialog,
+        onPressed: () => _showMedicineDialog(),
         child: const Icon(Icons.add),
       ),
     );
@@ -112,24 +100,16 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
               ),
             ),
             const SizedBox(height: 24),
-            Text(
-              'No Medicine Reminders',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-            ),
+            Text('No Medicine Reminders', style: Theme.of(context).textTheme.headlineSmall),
             const SizedBox(height: 8),
             Text(
-              'Add your first medicine reminder to stay on track with your medications.',
+              'Add your first medicine reminder to stay on track.',
               textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                    color: AppColors.textSecondary,
-                  ),
+              style: Theme.of(context).textTheme.bodyLarge,
             ),
-            const SizedBox(height: 24),
+             const SizedBox(height: 24),
             ElevatedButton.icon(
-              onPressed: _showAddReminderDialog,
+              onPressed: () => _showMedicineDialog(),
               icon: const Icon(Icons.add),
               label: const Text('Add Reminder'),
             ),
@@ -139,328 +119,50 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
     );
   }
 
-  Widget _buildReminderCard(ReminderModel reminder) {
+  Widget _buildMedicineCard(MedicineModel medicine) {
     return Card(
       margin: const EdgeInsets.only(bottom: 12),
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-      child: InkWell(
-        borderRadius: BorderRadius.circular(12),
-        onLongPress: () => _showConsumedDialog(reminder),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
-          child: Row(
-            children: [
-              Container(
-                width: 50,
-                height: 50,
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(25),
-                ),
-                child: const Icon(
-                  Icons.medication,
-                  color: AppColors.primary,
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      reminder.title,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w600,
-                        fontSize: 16,
-                      ),
-                    ),
-                    if (reminder.notes.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Text(
-                        reminder.notes,
-                        style: TextStyle(
-                          color: AppColors.textSecondary,
-                          fontSize: 14,
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            CircleAvatar(radius: 25, child: Icon(_getMedicineIcon(medicine.type))),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(medicine.name, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+                  const SizedBox(height: 4),
+                  Text('Dosage: ${medicine.dosage}', style: TextStyle(color: Colors.grey.shade600)),
+                  const SizedBox(height: 4),
+                  Row(
+                    children: [
+                      Icon(Icons.access_time, size: 16, color: Colors.grey.shade600),
+                      const SizedBox(width: 4),
+                      Expanded(
+                        child: Text(
+                          medicine.reminderTimes.join(', '),
+                          style: TextStyle(color: Colors.grey.shade600),
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.access_time,
-                          size: 16,
-                          color: AppColors.textSecondary,
-                        ),
-                        const SizedBox(width: 4),
-                        Text(
-                          '${reminder.time.hour.toString().padLeft(2, '0')}:${reminder.time.minute.toString().padLeft(2, '0')}',
-                          style: TextStyle(
-                            color: AppColors.textSecondary,
-                            fontSize: 14,
-                          ),
-                        ),
-                        if (reminder.repeatInterval != 'none') ...[
-                          const SizedBox(width: 12),
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                                horizontal: 8, vertical: 2),
-                            decoration: BoxDecoration(
-                              color: AppColors.accent.withOpacity(0.2),
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            child: Text(
-                              reminder.repeatInterval,
-                              style: const TextStyle(
-                                fontSize: 12,
-                                color: AppColors.textSecondary,
-                              ),
-                            ),
-                          ),
-                        ],
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              PopupMenuButton(
-                itemBuilder: (context) => [
-                  const PopupMenuItem(
-                    value: 'edit',
-                    child: Row(
-                      children: [
-                        Icon(Icons.edit, size: 20),
-                        SizedBox(width: 8),
-                        Text('Edit'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'consumed',
-                    child: Row(
-                      children: [
-                        Icon(Icons.check, size: 20),
-                        SizedBox(width: 8),
-                        Text('Mark as Taken'),
-                      ],
-                    ),
-                  ),
-                  const PopupMenuItem(
-                    value: 'delete',
-                    child: Row(
-                      children: [
-                        Icon(Icons.delete, size: 20, color: AppColors.error),
-                        SizedBox(width: 8),
-                        Text('Delete',
-                            style: TextStyle(color: AppColors.error)),
-                      ],
-                    ),
                   ),
                 ],
-                onSelected: (value) {
-                  switch (value) {
-                    case 'edit':
-                      _showEditReminderDialog(reminder);
-                      break;
-                    case 'consumed':
-                      _showConsumedDialog(reminder);
-                      break;
-                    case 'delete':
-                      _deleteReminder(reminder);
-                      break;
-                  }
-                },
               ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  void _showAddReminderDialog() {
-    _showReminderDialog();
-  }
-
-  void _showEditReminderDialog(ReminderModel reminder) {
-    _showReminderDialog(reminder: reminder);
-  }
-
-  void _showReminderDialog({ReminderModel? reminder}) {
-    final isEditing = reminder != null;
-    final titleController = TextEditingController(text: reminder?.title ?? '');
-    final notesController = TextEditingController(text: reminder?.notes ?? '');
-    TimeOfDay selectedTime = reminder != null
-        ? TimeOfDay.fromDateTime(reminder.time)
-        : TimeOfDay.now();
-    String selectedRepeat = reminder?.repeatInterval ?? 'daily';
-    bool isSaving = false;
-
-    showDialog(
-      context: context,
-      barrierDismissible: !isSaving,
-      builder: (context) => StatefulBuilder(
-        builder: (context, setDialogState) => AlertDialog(
-          title: Text(isEditing ? 'Edit Reminder' : 'Add Medicine Reminder'),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                TextFormField(
-                  controller: titleController,
-                  decoration: const InputDecoration(
-                    labelText: 'Medicine Name',
-                    prefixIcon: Icon(Icons.medication),
-                  ),
-                  enabled: !isSaving,
-                ),
-                const SizedBox(height: 16),
-                TextFormField(
-                  controller: notesController,
-                  decoration: const InputDecoration(
-                    labelText: 'Notes (optional)',
-                    prefixIcon: Icon(Icons.note),
-                  ),
-                  maxLines: 2,
-                  enabled: !isSaving,
-                ),
-                const SizedBox(height: 16),
-                ListTile(
-                  leading: const Icon(Icons.access_time),
-                  title: const Text('Time'),
-                  subtitle: Text(selectedTime.format(context)),
-                  onTap: isSaving ? null : () async {
-                    final time = await showTimePicker(
-                      context: context,
-                      initialTime: selectedTime,
-                    );
-                    if (time != null) {
-                      setDialogState(() => selectedTime = time);
-                    }
-                  },
-                ),
-                const SizedBox(height: 16),
-                DropdownButtonFormField<String>(
-                  value: selectedRepeat,
-                  decoration: const InputDecoration(
-                    labelText: 'Repeat',
-                    prefixIcon: Icon(Icons.repeat),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'none', child: Text('None')),
-                    DropdownMenuItem(value: 'daily', child: Text('Daily')),
-                    DropdownMenuItem(value: 'weekly', child: Text('Weekly')),
-                  ],
-                  onChanged: isSaving ? null : (value) {
-                    setDialogState(() => selectedRepeat = value ?? 'daily');
-                  },
-                ),
-              ],
             ),
-          ),
-          actions: [
-            TextButton(
-              onPressed: isSaving ? null : () => Navigator.of(context).pop(),
-              child: const Text('Cancel'),
-            ),
-            ElevatedButton(
-              onPressed: isSaving ? null : () async {
-                setDialogState(() => isSaving = true);
-
-                if (titleController.text.trim().isEmpty) {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    const SnackBar(content: Text('Please enter medicine name')),
-                  );
-                  setDialogState(() => isSaving = false);
-                  return;
-                }
-
-                // ✅ FINAL FIX: Use timezone-aware comparison
-                final tz.TZDateTime nowInLocalTZ = tz.TZDateTime.now(tz.local);
-                
-                tz.TZDateTime scheduledTimeInLocalTZ = tz.TZDateTime(
-                  tz.local,
-                  nowInLocalTZ.year,
-                  nowInLocalTZ.month,
-                  nowInLocalTZ.day,
-                  selectedTime.hour,
-                  selectedTime.minute,
-                );
-
-                if (scheduledTimeInLocalTZ.isBefore(nowInLocalTZ)) {
-                   debugPrint("[MedicineScreen] Scheduled time is in the past. Adjusting...");
-                  if (selectedRepeat == 'weekly') {
-                    scheduledTimeInLocalTZ = scheduledTimeInLocalTZ.add(const Duration(days: 7));
-                  } else {
-                    scheduledTimeInLocalTZ = scheduledTimeInLocalTZ.add(const Duration(days: 1));
-                  }
-                }
-
-                final finalScheduleTime = DateTime.fromMillisecondsSinceEpoch(scheduledTimeInLocalTZ.millisecondsSinceEpoch);
-
-                final reminderModel = ReminderModel(
-                  id: reminder?.id,
-                  uid: context.read<UserProvider>().user!.uid,
-                  type: 'medicine',
-                  title: titleController.text.trim(),
-                  notes: notesController.text.trim(),
-                  time: finalScheduleTime, // Store as plain DateTime
-                  repeatInterval: selectedRepeat,
-                );
-
-                try {
-                  final firestoreService = context.read<FirestoreService>();
-                  String docId;
-
-                  if (isEditing) {
-                    docId = reminder.id!;
-                    await firestoreService.updateReminder(docId, reminderModel);
-                    await NotificationService.cancelNotification(docId.hashCode);
-                  } else {
-                    docId = await firestoreService.addReminder(reminderModel);
-                  }
-                  
-                  await NotificationService.scheduleMedicine(
-                    id: docId.hashCode,
-                    title: 'Medicine Reminder',
-                    body: 'Time to take ${titleController.text.trim()}',
-                    scheduledDate: finalScheduleTime,
-                    repeatInterval: selectedRepeat, reminderId: '',
-                  );
-
-                  HapticFeedback.lightImpact();
-                  Navigator.of(context).pop();
-
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text(isEditing
-                          ? 'Reminder updated successfully'
-                          : 'Reminder added successfully'),
-                      backgroundColor: AppColors.success,
-                    ),
-                  );
-                } catch (e) {
-                  debugPrint("[MedicineScreen] FATAL ERROR during save/schedule: $e");
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(
-                      content: Text('Error: $e'),
-                      backgroundColor: AppColors.error,
-                    ),
-                  );
-                  setDialogState(() => isSaving = false);
-                }
+            PopupMenuButton<String>(
+              onSelected: (value) {
+                if (value == 'edit') _showMedicineDialog(medicine: medicine);
+                if (value == 'delete') _deleteMedicine(medicine);
               },
-              child: isSaving
-                  ? const SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        color: Colors.white,
-                        strokeWidth: 2,
-                      ),
-                    )
-                  : Text(isEditing ? 'Update' : 'Add'),
+              itemBuilder: (context) => [
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
+                const PopupMenuItem(value: 'delete', child: Text('Delete')),
+              ],
             ),
           ],
         ),
@@ -468,101 +170,229 @@ class _MedicineRemindersScreenState extends State<MedicineRemindersScreen> {
     );
   }
 
-  void _showConsumedDialog(ReminderModel reminder) {
+  IconData _getMedicineIcon(MedicineType type) {
+    switch (type) {
+      case MedicineType.pill: return Icons.medication;
+      case MedicineType.syrup: return Icons.science;
+      case MedicineType.injection: return Icons.vaccines;
+      default: return Icons.healing;
+    }
+  }
+
+  // +++ NEW HELPER FUNCTION TO SAFELY PARSE TIME +++
+  TimeOfDay? _parseTimeOfDay(String timeString) {
+    try {
+      final parts = timeString.split(':');
+      if (parts.length != 2) return null;
+      final hour = int.tryParse(parts[0]);
+      final minute = int.tryParse(parts[1]);
+      if (hour == null || minute == null) return null;
+      return TimeOfDay(hour: hour, minute: minute);
+    } catch (e) {
+      debugPrint("Error parsing time string '$timeString': $e");
+      return null;
+    }
+  }
+
+  void _showMedicineDialog({MedicineModel? medicine}) {
+    final isEditing = medicine != null;
+    final formKey = GlobalKey<FormState>();
+
+    // Controllers and state variables
+    final nameController = TextEditingController(text: medicine?.name ?? '');
+    final dosageController = TextEditingController(text: medicine?.dosage ?? '');
+    final notesController = TextEditingController(text: medicine?.notes ?? '');
+    var selectedType = medicine?.type ?? MedicineType.pill;
+    
+    // vvvvvvvvvv THIS LINE IS NOW SAFER vvvvvvvvvv
+    var reminderTimes = medicine != null
+        ? medicine.reminderTimes.map(_parseTimeOfDay).whereType<TimeOfDay>().toList()
+        : [TimeOfDay(hour: 8, minute: 0)];
+    // ^^^^^^^^^^ THIS LINE IS NOW SAFER ^^^^^^^^^^
+
+    if (isEditing && reminderTimes.isEmpty && medicine.reminderTimes.isNotEmpty) {
+      // This handles the case where all saved times were badly formatted.
+      // We add a default time to prevent the list from being empty.
+      reminderTimes.add(TimeOfDay(hour: 8, minute: 0));
+       WidgetsBinding.instance.addPostFrameCallback((_) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Could not read saved times for "${medicine.name}". Please set them again.'), backgroundColor: Colors.orange),
+        );
+      });
+    }
+
+    var frequency = medicine != null ? List<String>.from(medicine.frequency) : <String>[];
+    var startDate = medicine?.startDate ?? DateTime.now();
+    var endDate = medicine?.endDate;
+
+    final daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
     showDialog(
       context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Mark as Taken'),
-        content: Text('Mark "${reminder.title}" as consumed?'),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                final consumedMedicine = ConsumedMedicine(
-                  uid: reminder.uid,
-                  reminderId: reminder.id!,
-                  name: reminder.title,
-                  consumedAt: DateTime.now(),
-                );
-
-                await context
-                    .read<FirestoreService>()
-                    .addConsumedMedicine(consumedMedicine);
-
-                HapticFeedback.lightImpact();
-                Navigator.of(context).pop();
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Medicine marked as taken'),
-                    backgroundColor: AppColors.success,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          title: Text(isEditing ? 'Edit Medicine' : 'Add Medicine'),
+          content: Form(
+            key: formKey,
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  TextFormField(controller: nameController, decoration: const InputDecoration(labelText: 'Medicine Name'), validator: (v) => v!.isEmpty ? 'Required' : null),
+                  TextFormField(controller: dosageController, decoration: const InputDecoration(labelText: 'Dosage (e.g., 1 pill)'), validator: (v) => v!.isEmpty ? 'Required' : null),
+                  DropdownButtonFormField<MedicineType>(
+                    value: selectedType,
+                    decoration: const InputDecoration(labelText: 'Type'),
+                    items: MedicineType.values.map((t) => DropdownMenuItem(value: t, child: Text(t.toString().split('.').last))).toList(),
+                    onChanged: (v) => setDialogState(() => selectedType = v!),
                   ),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: $e'),
-                    backgroundColor: AppColors.error,
+                  const SizedBox(height: 16),
+                  Text('Frequency', style: Theme.of(context).textTheme.labelLarge),
+                  Wrap(
+                    spacing: 6.0,
+                    children: daysOfWeek.map((day) => FilterChip(
+                      label: Text(day),
+                      selected: frequency.contains(day),
+                      onSelected: (selected) => setDialogState(() => selected ? frequency.add(day) : frequency.remove(day)),
+                    )).toList(),
                   ),
-                );
-              }
-            },
-            child: const Text('Confirm'),
+                  const SizedBox(height: 16),
+                  Text('Reminder Times', style: Theme.of(context).textTheme.labelLarge),
+                  ...reminderTimes.map((time) => Chip(label: Text(time.format(context)), onDeleted: () => setDialogState(() => reminderTimes.remove(time)))).toList(),
+                  ElevatedButton(onPressed: () async {
+                    final time = await showTimePicker(context: context, initialTime: TimeOfDay.now());
+                    if (time != null && !reminderTimes.contains(time)) setDialogState(() => reminderTimes.add(time));
+                  }, child: Text('Add Time')),
+                  ListTile(
+                    title: Text('Start Date'),
+                    subtitle: Text(DateFormat.yMMMd().format(startDate)),
+                    onTap: () async {
+                      final date = await showDatePicker(context: context, initialDate: startDate, firstDate: DateTime(2020), lastDate: DateTime(2100));
+                      if (date != null) setDialogState(() => startDate = date);
+                    },
+                  ),
+                  ListTile(
+                    title: Text('End Date (Optional)'),
+                    subtitle: Text(endDate == null ? 'Not Set' : DateFormat.yMMMd().format(endDate!)),
+                    trailing: endDate == null ? null : IconButton(icon: Icon(Icons.clear), onPressed: () => setDialogState(() => endDate = null)),
+                    onTap: () async {
+                      final date = await showDatePicker(context: context, initialDate: endDate ?? startDate, firstDate: startDate, lastDate: DateTime(2100));
+                      if (date != null) setDialogState(() => endDate = date);
+                    },
+                  ),
+                  TextFormField(controller: notesController, decoration: const InputDecoration(labelText: 'Notes (optional)')),
+                ],
+              ),
+            ),
           ),
-        ],
+          actions: [
+            TextButton(onPressed: () => Navigator.of(context).pop(), child: const Text('Cancel')),
+            ElevatedButton(
+              onPressed: () async {
+                if (!formKey.currentState!.validate()) return;
+
+                final uid = context.read<UserProvider>().user!.uid;
+                final newMedicine = MedicineModel(
+                  id: medicine?.id,
+                  userId: uid,
+                  name: nameController.text,
+                  dosage: dosageController.text,
+                  type: selectedType,
+                  reminderTimes: reminderTimes.map((t) => '${t.hour.toString().padLeft(2, '0')}:${t.minute.toString().padLeft(2, '0')}').toList(),
+                  frequency: frequency,
+                  startDate: startDate,
+                  endDate: endDate,
+                  notes: notesController.text,
+                );
+
+                try {
+                  final firestore = context.read<FirestoreService>();
+                  String docId;
+
+                  if (isEditing) {
+                    docId = medicine.id!;
+                    await _cancelNotificationsForMedicine(medicine);
+                    await firestore.updateMedicine(newMedicine.copyWith(id: docId));
+                  } else {
+                    final docRef = await firestore.addMedicine(newMedicine);
+                    docId = docRef.id;
+                  }
+                  await _scheduleNotificationsForMedicine(newMedicine.copyWith(id: docId));
+
+                  Navigator.of(context).pop();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Medicine ${isEditing ? 'updated' : 'added'}!')),
+                  );
+
+                } catch (e) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Error: $e')),
+                  );
+                }
+              },
+              child: Text(isEditing ? 'Update' : 'Save'),
+            ),
+          ],
+        ),
       ),
     );
   }
 
-  void _deleteReminder(ReminderModel reminder) {
-    showDialog(
+  Future<void> _scheduleNotificationsForMedicine(MedicineModel medicine) async {
+    for (final timeStr in medicine.reminderTimes) {
+      final timeParts = timeStr.split(':');
+      final hour = int.parse(timeParts[0]);
+      final minute = int.parse(timeParts[1]);
+
+      await NotificationService.scheduleMedicineNotification(
+        id: (medicine.id! + timeStr).hashCode,
+        title: 'Medication Reminder: ${medicine.name}',
+        body: 'Time to take your ${medicine.dosage} dose.',
+        payload: medicine.name, // ✅ THIS IS THE FIX
+        hour: hour,
+        minute: minute,
+        startDate: medicine.startDate,
+        endDate: medicine.endDate,
+        days: medicine.frequency.map((day) => daysOfWeek.indexOf(day) + 1).toList(),
+      );
+    }
+  }
+
+  Future<void> _cancelNotificationsForMedicine(MedicineModel medicine) async {
+    for (final timeStr in medicine.reminderTimes) {
+      await NotificationService.cancelNotification((medicine.id! + timeStr).hashCode);
+    }
+  }
+
+  void _deleteMedicine(MedicineModel medicine) async {
+    final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Delete Reminder'),
-        content: Text('Are you sure you want to delete "${reminder.title}"?'),
+        title: const Text('Delete Medicine'),
+        content: Text('Are you sure you want to delete the reminder for "${medicine.name}"?'),
         actions: [
-          TextButton(
-            onPressed: () => Navigator.of(context).pop(),
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            onPressed: () async {
-              try {
-                await context
-                    .read<FirestoreService>()
-                    .deleteReminder(reminder.id!);
-
-                await NotificationService.cancelNotification(
-                    reminder.id.hashCode);
-
-                HapticFeedback.lightImpact();
-                Navigator.of(context).pop();
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Reminder deleted'),
-                    backgroundColor: AppColors.success,
-                  ),
-                );
-              } catch (e) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text('Error: $e'),
-                    backgroundColor: AppColors.error,
-                  ),
-                );
-              }
-            },
-            style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-            child: const Text('Delete'),
-          ),
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(onPressed: () => Navigator.of(context).pop(true), child: const Text('Delete', style: TextStyle(color: Colors.red))),
         ],
       ),
     );
+
+    if (confirm == true) {
+      try {
+        await _cancelNotificationsForMedicine(medicine);
+        await context.read<FirestoreService>().deleteMedicine(medicine.id!);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${medicine.name} deleted.')),
+        );
+      } catch (e) {
+         ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error deleting: $e'), backgroundColor: Colors.red),
+        );
+      }
+    }
   }
 }
 
+// Helper list for scheduling
+const List<String> daysOfWeek = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];

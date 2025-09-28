@@ -9,7 +9,7 @@ import '../../providers/user_provider.dart';
 import '../../utils/theme.dart';
 import '../home_screen.dart';
 import 'signup_screen.dart';
-import '../features/doctor_home_screen.dart';
+import '../features/doctor/doctor_home_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});

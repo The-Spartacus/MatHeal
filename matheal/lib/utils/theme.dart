@@ -4,7 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 // --- Redesigned Color Palette for a Sleek Look ---
 class AppColors {
   // Light Mode Colors
-  static const Color primary = Color.fromRGBO(59, 170, 243, 1);
+  static const Color primary = Color.fromARGB(255, 30, 85, 112);
   static const Color accent = Color(0xFFE91E63);
   static const Color background = Color(0xFFFDFDFD);
   static const Color surface = Colors.white;
@@ -20,6 +20,8 @@ class AppColors {
   // Shared Colors
   static const Color error = Color(0xFFE57373);
   static const Color success = Color(0xFF81C784);
+
+  static get secondary => null;
 }
 
 class AppTheme {

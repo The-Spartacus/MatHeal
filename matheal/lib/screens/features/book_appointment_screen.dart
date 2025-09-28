@@ -6,6 +6,7 @@ import '../../models/appointment_model.dart';
 import '../../services/firestore_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/appointment_service.dart';
+import 'doctor/doctor_detail_screen.dart'; // Import the new doctor detail screen
 
 class BookAppointmentScreen extends StatefulWidget {
   const BookAppointmentScreen({super.key});
@@ -89,6 +90,15 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       Navigator.of(context).pop();
     }
   }
+
+  void _viewDoctorDetails(UserModel doctor) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(
+        builder: (context) => DoctorDetailScreen(doctor: doctor),
+      ),
+    );
+  }
   
   @override
   Widget build(BuildContext context) {
@@ -96,7 +106,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       appBar: AppBar(
         title: const Text("Book an Appointment"),
         actions: [
-          // ✅ FILTER BUTTON
+          // Filter button
           PopupMenuButton<String>(
             icon: const Icon(Icons.filter_list),
             onSelected: (value) {
@@ -127,7 +137,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
       ),
       body: Column(
         children: [
-          // ✅ SEARCH BAR
+          // Search bar
           Padding(
             padding: const EdgeInsets.all(12.0),
             child: TextField(
@@ -154,7 +164,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                 if (snapshot.hasError) return Center(child: Text("Error: ${snapshot.error}"));
                 if (!snapshot.hasData || snapshot.data!.isEmpty) return const Center(child: Text("No doctors available."));
                 
-                // ✅ FILTERING AND SEARCHING LOGIC
+                // Filtering and searching logic
                 var doctors = snapshot.data!;
                 if (_filterSpecialization != null) {
                   doctors = doctors.where((d) => d.specialization == _filterSpecialization).toList();
@@ -192,23 +202,20 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
 
   Widget _buildDoctorCard(UserModel doctor) {
     return Container(
-      height: 120,
+      height: 140,
       margin: const EdgeInsets.symmetric(vertical: 8),
-      child: GestureDetector(
-        onTap: () => _pickDateTimeAndBook(doctor),
+      child: Card(
+        elevation: 4,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-              clipBehavior: Clip.antiAlias,
-              child: Container(
-                decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [Color(0xFF2C3E50), Color(0xFF1B2631)],
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                  ),
+            Container(
+              decoration: const BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [Color(0xFF2C3E50), Color(0xFF1B2631)],
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
                 ),
               ),
             ),
@@ -217,10 +224,29 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
               bottom: 0,
               top: 0,
               child: ClipRRect(
-                borderRadius: const BorderRadius.only(topRight: Radius.circular(20), bottomRight: Radius.circular(20)),
+                borderRadius: const BorderRadius.only(
+                  topRight: Radius.circular(20), 
+                  bottomRight: Radius.circular(20)
+                ),
                 child: doctor.avatarUrl != null
-                    ? Image.network(doctor.avatarUrl!, width: 110, fit: BoxFit.cover, errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 80, color: Colors.white54))
-                    : const SizedBox(width: 110, child: Icon(Icons.medical_services_outlined, size: 80, color: Colors.white54)),
+                    ? Image.network(
+                        doctor.avatarUrl!, 
+                        width: 110, 
+                        fit: BoxFit.cover, 
+                        errorBuilder: (_, __, ___) => const Icon(
+                          Icons.person, 
+                          size: 80, 
+                          color: Colors.white54
+                        )
+                      )
+                    : const SizedBox(
+                        width: 110, 
+                        child: Icon(
+                          Icons.medical_services_outlined, 
+                          size: 80, 
+                          color: Colors.white54
+                        )
+                      ),
               ),
             ),
             Positioned.fill(
@@ -231,19 +257,125 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    Text("Dr. ${doctor.name}", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold, fontSize: 18)),
+                    Text(
+                      "Dr. ${doctor.name}", 
+                      style: const TextStyle(
+                        color: Colors.white, 
+                        fontWeight: FontWeight.bold, 
+                        fontSize: 18
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
                     const SizedBox(height: 4),
-                    Text(doctor.specialization ?? "Specialist", style: TextStyle(color: Colors.white.withOpacity(0.8), fontSize: 14)),
+                    Text(
+                      doctor.specialization ?? "Specialist", 
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.8), 
+                        fontSize: 14
+                      )
+                    ),
                     const SizedBox(height: 4),
-                    Text(doctor.hospitalName ?? "Clinic", style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12)),
+                    Text(
+                      doctor.hospitalName ?? "Clinic", 
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.6), 
+                        fontSize: 12
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 8),
+                    // Rating display
+                    Row(
+                      children: [
+                        Icon(
+                          Icons.star, 
+                          color: Colors.amber, 
+                          size: 16
+                        ),
+                        const SizedBox(width: 4),
+                        Text(
+                          "${doctor.averageRating.toStringAsFixed(1)} (${doctor.totalReviews})",
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.8),
+                            fontSize: 12,
+                          ),
+                        ),
+                      ],
+                    ),
                   ],
                 ),
               ),
             ),
+            // Action buttons
             Positioned(
               bottom: 8,
               right: 120,
-              child: Icon(Icons.arrow_forward_ios, color: Colors.white.withOpacity(0.5), size: 16),
+              child: Row(
+                children: [
+                  // View Details button
+                  GestureDetector(
+                    onTap: () => _viewDoctorDetails(doctor),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withOpacity(0.2),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.info_outline, 
+                            color: Colors.white.withOpacity(0.8), 
+                            size: 14
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "Details",
+                            style: TextStyle(
+                              color: Colors.white.withOpacity(0.8),
+                              fontSize: 11,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Book appointment button
+                  GestureDetector(
+                    onTap: () => _pickDateTimeAndBook(doctor),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.calendar_month, 
+                            color: Color(0xFF2C3E50), 
+                            size: 14
+                          ),
+                          SizedBox(width: 4),
+                          Text(
+                            "Book",
+                            style: TextStyle(
+                              color: Color(0xFF2C3E50),
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             )
           ],
         ),
@@ -275,4 +407,3 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
   }
 }
-

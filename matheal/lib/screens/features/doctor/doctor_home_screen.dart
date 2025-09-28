@@ -5,10 +5,10 @@ import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:matheal/screens/doctor_profile_screen.dart';
 import 'package:matheal/services/auth_service.dart';
 import 'package:provider/provider.dart';
-import '../../models/user_model.dart';
+import '../../../models/user_model.dart';
 import 'doctor_appointments_screen.dart';
 import 'doctor_article_screen.dart';
-import '../../utils/theme.dart';
+import '../../../utils/theme.dart';
 
 class DoctorHomeScreen extends StatefulWidget {
   final UserModel doctor;

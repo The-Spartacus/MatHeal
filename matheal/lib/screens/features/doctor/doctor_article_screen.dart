@@ -2,9 +2,9 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
-import '../../models/article_model.dart';
-import '../../services/image_upload_service.dart';
-import '../../utils/theme.dart';
+import '../../../models/article_model.dart';
+import '../../../services/image_upload_service.dart';
+import '../../../utils/theme.dart';
 
 class DoctorArticleScreen extends StatefulWidget {
   final String doctorId;

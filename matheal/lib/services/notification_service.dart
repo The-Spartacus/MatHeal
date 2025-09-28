@@ -5,7 +5,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
-/// Centralized notification service for appointments + medicines
 class NotificationService {
   static final FlutterLocalNotificationsPlugin _notifications =
       FlutterLocalNotificationsPlugin();
@@ -107,56 +106,106 @@ class NotificationService {
     }
   }
 
-  /// 🟢 Schedule a medicine reminder (repeatable)
-// lib/services/notification_service.dart
-// ... inside NotificationService class
-static Future<void> scheduleMedicine({
-  required int id,
-  required String title,
-  required String body,
-  required DateTime scheduledDate,
-  String repeatInterval = 'none', // none, daily, weekly
-  required String reminderId, // ✅ Add reminderId here
-}) async {
-  try {
-    final scheduledTZDate = tz.TZDateTime.from(scheduledDate, _local);
+  // --- vvv UPDATED/NEW METHODS START HERE vvv ---
 
-    DateTimeComponents? matchDateTimeComponents;
-    if (repeatInterval == 'daily') {
-      matchDateTimeComponents = DateTimeComponents.time;
-    } else if (repeatInterval == 'weekly') {
-      matchDateTimeComponents = DateTimeComponents.dayOfWeekAndTime;
+  /// 🟢 Schedules a potentially repeating medicine reminder for specific days of the week.
+  static Future<void> scheduleMedicineNotification({
+    required int id,
+    required String title,
+    required String body,
+    String? payload,
+    required int hour,
+    required int minute,
+    required DateTime startDate,
+    DateTime? endDate,
+    required List<int> days, // 1 for Monday, 7 for Sunday
+  }) async {
+    try {
+      // Find the next valid instance to schedule the notification
+      final tz.TZDateTime nextInstance = _getNextScheduledInstance(
+        hour: hour,
+        minute: minute,
+        startDate: startDate,
+        days: days,
+      );
+
+      // If an end date is specified, don't schedule if we are past it
+      if (endDate != null && nextInstance.isAfter(endDate)) {
+        debugPrint("[NotificationService] First instance is after end date. Skipping schedule.");
+        return;
+      }
+
+      const notificationDetails = NotificationDetails(
+        android: AndroidNotificationDetails(
+          'medicine_alarm_channel',
+          'Medicine Alarms',
+          channelDescription: 'Channel for medicine alarms and reminders',
+          importance: Importance.max,
+          priority: Priority.high,
+          fullScreenIntent: true,
+          category: AndroidNotificationCategory.alarm,
+          sound: RawResourceAndroidNotificationSound('medicine_alarm'), // Assuming 'medicine_alarm.mp3' is in android/app/src/main/res/raw/
+
+        ),
+        iOS: DarwinNotificationDetails(presentSound: true),
+      );
+
+      await _notifications.zonedSchedule(
+        id,
+        title,
+        body,
+        nextInstance,
+        notificationDetails,
+        payload: payload,
+        androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+        uiLocalNotificationDateInterpretation:
+            UILocalNotificationDateInterpretation.absoluteTime,
+        // This is the key for weekly repeats on specific days
+        matchDateTimeComponents: days.isNotEmpty 
+            ? DateTimeComponents.dayOfWeekAndTime 
+            : DateTimeComponents.time,
+      );
+      
+      debugPrint("[NotificationService] Medicine scheduled for next instance at $nextInstance ✅");
+
+    } catch (e) {
+      debugPrint("[NotificationService] ERROR scheduling medicine: $e");
+    }
+  }
+
+  /// Helper function to calculate the next valid date and time for a reminder.
+  static tz.TZDateTime _getNextScheduledInstance({
+    required int hour,
+    required int minute,
+    required DateTime startDate,
+    required List<int> days,
+  }) {
+    tz.TZDateTime now = tz.TZDateTime.now(_local);
+    tz.TZDateTime scheduledDate = tz.TZDateTime(_local, startDate.year, startDate.month, startDate.day, hour, minute);
+
+    // If the start date is in the past, start checking from today
+    if (scheduledDate.isBefore(now)) {
+      scheduledDate = tz.TZDateTime(_local, now.year, now.month, now.day, hour, minute);
+    }
+    
+    // If scheduling for specific days of the week
+    if (days.isNotEmpty) {
+      // Keep adding days until we find a day that is in our list of valid days
+      while (!days.contains(scheduledDate.weekday)) {
+        scheduledDate = scheduledDate.add(const Duration(days: 1));
+      }
+    }
+    
+    // If the calculated time is still in the past (for today), move to the next valid day
+    if (scheduledDate.isBefore(now)) {
+       scheduledDate = scheduledDate.add(const Duration(days: 1));
+       if (days.isNotEmpty) {
+         while (!days.contains(scheduledDate.weekday)) {
+          scheduledDate = scheduledDate.add(const Duration(days: 1));
+        }
+       }
     }
 
-    const notificationDetails = NotificationDetails(
-      android: AndroidNotificationDetails(
-        'medicine_alarm_channel',
-        'Medicine Alarms',
-        channelDescription: 'Channel for medicine alarms with full-screen intent',
-        importance: Importance.max,
-        priority: Priority.high,
-        fullScreenIntent: true,
-        category: AndroidNotificationCategory.alarm,
-      ),
-      iOS: DarwinNotificationDetails(presentSound: true),
-    );
-
-    await _notifications.zonedSchedule(
-      id,
-      title,
-      body,
-      scheduledTZDate,
-      notificationDetails,
-      payload: body, // ✅ Pass the unique reminderId as the payload
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
-      uiLocalNotificationDateInterpretation:
-          UILocalNotificationDateInterpretation.absoluteTime,
-      matchDateTimeComponents: matchDateTimeComponents,
-    );
-
-    debugPrint("[NotificationService] Medicine scheduled at $scheduledTZDate ✅");
-  } catch (e) {
-    debugPrint("[NotificationService] ERROR scheduling medicine: $e");
+    return scheduledDate;
   }
-}
 }

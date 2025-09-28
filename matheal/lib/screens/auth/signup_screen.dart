@@ -1,7 +1,7 @@
 // lib/screens/auth/signup_screen.dart
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:matheal/screens/features/doctor_home_screen.dart';
+import 'package:matheal/screens/features/doctor/doctor_home_screen.dart';
 import 'package:provider/provider.dart';
 import '../../services/auth_service.dart';
 import '../../services/firestore_service.dart';

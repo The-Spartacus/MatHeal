@@ -50,6 +50,7 @@ void main() async {
 
   // Initialize timezone data
   tz.initializeTimeZones();
+  
 
   // Initialize notifications
   await NotificationService.init(
@@ -60,6 +61,7 @@ void main() async {
   
 
   runApp(const MatHealApp());
+  
 }
 void onDidReceiveNotificationResponse(NotificationResponse notificationResponse) {
   if (notificationResponse.payload != null) {
@@ -123,7 +125,7 @@ class MatHealApp extends StatelessWidget {
 routes: {
   '/alarm': (context) {
     final medicineName = ModalRoute.of(context)!.settings.arguments as String?;
-    return AlarmScreen(medicineName: medicineName ?? "Medicine");
+    return AlarmScreen(medicineName: medicineName ?? "Medicine", alarmId: -1);
   },
 },
 
@@ -133,4 +135,3 @@ routes: {
     );
   }
 }
-
