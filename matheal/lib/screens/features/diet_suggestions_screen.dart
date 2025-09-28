@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_markdown/flutter_markdown.dart'; // ✅ Import the markdown package
 import 'package:provider/provider.dart';
 import '../../providers/user_provider.dart';
 import '../../services/chat_service.dart';
@@ -32,15 +33,19 @@ class _DietSuggestionsScreenState extends State<DietSuggestionsScreen> {
         throw Exception("Please complete your profile to get personalized suggestions.");
       }
 
-      // Construct a detailed prompt for the AI
+      // ✅ --- PROMPT UPDATED TO REQUEST MARKDOWN TABLES ---
       final prompt = """
-        As a maternal health and nutrition expert, provide safe and conservative diet suggestions for a user with the following details:
+        As a maternal health and nutrition expert, create a one-day sample diet plan for a user with the following details:
         - Weeks Pregnant: ${profile.weeksPregnant ?? 'Not specified'}
         - Existing Health Conditions: ${profile.conditions.isNotEmpty ? profile.conditions.join(', ') : 'None specified'}
 
-        Please structure your response into clear sections: 'Key Nutrients to Focus On', 'Foods to Eat', and 'Foods to Avoid'. 
-        The advice must be general, easy to understand, and include a strong recommendation to consult a doctor before making any dietary changes.
-        Do not diagnose or give medical advice for the specified conditions, only general dietary considerations.
+        Generate the response ONLY in Markdown format.
+
+        First, create a table for 'Meal Suggestions' with the columns: 'Meal', 'Food Name', and 'Amount Of Food'. Include suggestions for Breakfast, Lunch, Dinner, and a Snack.
+
+        Second, create another table for 'Foods to Generally Avoid' with the columns: 'Food/Drink' and 'Reason'.
+
+        Finally, add a brief, one-sentence disclaimer at the end recommending the user to consult their doctor before making dietary changes. Do not provide any other text or introductions.
       """;
 
       final response = await chatService.sendMessage(prompt);
@@ -112,7 +117,7 @@ class _DietSuggestionsScreenState extends State<DietSuggestionsScreen> {
         ),
         const SizedBox(height: 8),
         Text(
-          'Tap the button below to generate diet tips based on your profile information.',
+          'Tap the button below to generate diet tips in a table format.',
           style: Theme.of(context).textTheme.bodyMedium,
           textAlign: TextAlign.center,
         ),
@@ -120,21 +125,34 @@ class _DietSuggestionsScreenState extends State<DietSuggestionsScreen> {
     );
   }
 
+  // ✅ --- THIS WIDGET IS UPDATED TO RENDER MARKDOWN ---
   Widget _buildSuggestionsCard(String suggestions) {
     return Card(
       elevation: 2,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(20),
-        child: Text(
-          suggestions,
-          style: const TextStyle(fontSize: 16, height: 1.5),
+        padding: const EdgeInsets.all(16),
+        // Use the MarkdownBody widget to display the table
+        child: MarkdownBody(
+          data: suggestions,
+          styleSheet: MarkdownStyleSheet(
+            tableBorder: TableBorder.all(
+              color: Colors.grey.shade300,
+              width: 1,
+            ),
+            tableHead: const TextStyle(
+              fontWeight: FontWeight.bold,
+              fontSize: 16,
+            ),
+            p: const TextStyle(fontSize: 15, height: 1.5),
+          ),
         ),
       ),
     );
   }
 
   Widget _buildErrorWidget(String error) {
+    // ... (This widget remains the same)
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [

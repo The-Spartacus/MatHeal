@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:matheal/models/chat_model.dart';
+import 'package:matheal/models/diet_model.dart';
 import '../models/user_model.dart';
 import '../models/post_model.dart';
 import '../models/medicine_model.dart';
@@ -241,4 +242,20 @@ class FirestoreService {
       });
     }
   }
+    //--------- THIS METHOD TO SAVE THE DIET CHAT ENTRY----------
+    
+  Future<void> saveDietSuggestion(DietChatEntry suggestion) async {
+    try {
+      await _db
+          .collection('users')
+          .doc(suggestion.userId)
+          .collection('diet_suggestions')
+          .add(suggestion.toFirestore());
+    } catch (e) {
+      // It's good practice to handle potential errors
+      print("❌ Error saving diet suggestion: $e");
+      rethrow; // Re-throw the error to be caught by the UI
+    }
+  }
+
 }
