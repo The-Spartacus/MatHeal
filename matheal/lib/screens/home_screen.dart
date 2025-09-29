@@ -1,14 +1,19 @@
 // ignore_for_file: deprecated_member_use
-
+import 'package:google_fonts/google_fonts.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart';
+import 'package:matheal/models/appointment_model.dart';
+import 'package:matheal/models/user_model.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:matheal/screens/features/book_appointment_screen.dart';
 import 'package:matheal/screens/features/community_screen.dart';
+import 'package:matheal/screens/features/doctor/doctor_detail_screen.dart';
 import 'package:matheal/screens/features/user_appointments_screen.dart';
+import 'package:matheal/services/appointment_service.dart';
 import 'package:matheal/services/auth_service.dart';
 import 'package:matheal/services/firestore_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
 import '../providers/theme_provider.dart';
@@ -30,13 +35,13 @@ class HomeScreen extends StatefulWidget {
 class _HomeScreenState extends State<HomeScreen> {
   int _selectedIndex = 0;
   bool _notificationsEnabled = true;
+  final AppointmentService _appointmentService = AppointmentService();
 
-  // Screens for each bottom nav tab
   late final List<Widget> _screens = [
-    _buildHomeTab(), // Home tab
+    _buildHomeTab(),
     const MedicineRemindersScreen(),
     const ChatScreen(),
-    const ArticleListScreen(), // New Article tab
+    const ArticleListScreen(),
   ];
 
   void _onItemTapped(int index) {
@@ -44,6 +49,7 @@ class _HomeScreenState extends State<HomeScreen> {
       _selectedIndex = index;
     });
   }
+
   @override
   void initState() {
     super.initState();
@@ -57,19 +63,178 @@ class _HomeScreenState extends State<HomeScreen> {
     });
   }
 
-  Future<void> _saveNotificationPreference(bool value) async {
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('notificationsEnabled', value);
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        elevation: 0,
+        // leading: Padding(
+        //   padding: const EdgeInsets.all(8.0),
+        //   child: Image.asset("assets/images/logo.png"),
+        // ),
+        // centerTitle: true,
+        title: RichText(
+          text: TextSpan(
+            children: [
+              TextSpan(
+                text: "MAT",
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: const Color.fromRGBO(59, 170, 243, 1),
+                      // fontWeight: FontWeight.bold,
+                      fontFamily: 'Satisfy',
+                    ),
+              ),
+              TextSpan(
+                text: "HEAL",
+                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: Colors.black,
+                      fontWeight: FontWeight.bold,
+                      fontFamily: 'Satisfy',
+                    ),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          _buildNotificationBell(context),
+          Builder(
+            builder: (context) {
+              return IconButton(
+                icon: const Icon(Icons.menu),
+                onPressed: () => Scaffold.of(context).openEndDrawer(),
+              );
+            },
+          ),
+        ],
+      ),
+      endDrawer: _buildDrawer(context),
+      body: _screens[_selectedIndex],
+      bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed,
+        currentIndex: _selectedIndex,
+        onTap: _onItemTapped,
+        selectedItemColor: const Color.fromARGB(255, 47, 125, 165),
+        unselectedItemColor: const Color.fromARGB(255, 136, 135, 135),
+        showUnselectedLabels: true,
+        items: const [
+          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: "Home"),
+          BottomNavigationBarItem(icon: Icon(Icons.alarm), label: "Reminders"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.smart_toy_outlined), label: "AI"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.article), label: "Articles"),
+        ],
+      ),
+    );
   }
 
-  // 👇 Home dashboard tab
+  // ✅ --- NOTIFICATION BELL WIDGET UPDATED ---
+  Widget _buildNotificationBell(BuildContext context) {
+    final user = context.watch<UserProvider>().user;
+    if (user == null) return const SizedBox.shrink();
+
+    return StreamBuilder<QuerySnapshot>(
+      stream: _appointmentService.getConfirmedAppointmentsStream(user.uid),
+      builder: (context, snapshot) {
+        // Map QuerySnapshot to a list of Appointment models
+        final notifications = snapshot.data?.docs
+            .map((doc) => Appointment.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
+            .toList() ?? [];
+        final hasNotifications = notifications.isNotEmpty;
+
+        return Badge(
+          label: Text(notifications.length.toString()),
+          isLabelVisible: hasNotifications,
+          child: IconButton(
+            icon: Icon(hasNotifications
+                ? Icons.notifications_active
+                : Icons.notifications_none_outlined),
+            onPressed: () {
+              if (hasNotifications) {
+                _showNotificationsDialog(context, notifications);
+              } else {
+                ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
+                    content: Text("You have no new notifications.")));
+              }
+            },
+          ),
+        );
+      },
+    );
+  }
+
+  // ✅ --- NOTIFICATIONS DIALOG UPDATED ---
+  void _showNotificationsDialog(
+      BuildContext context, List<Appointment> appointments) {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+          title: const Text("Appointment Confirmations"),
+          content: SizedBox(
+            width: double.maxFinite,
+            child: ListView.separated(
+              shrinkWrap: true,
+              itemCount: appointments.length,
+              separatorBuilder: (_, __) => const Divider(),
+              itemBuilder: (context, index) {
+                final appointment = appointments[index];
+                // Fetch doctor details for each notification
+                return FutureBuilder<UserModel?>(
+                  future: context
+                      .read<FirestoreService>()
+                      .getUser(appointment.doctorId),
+                  builder: (context, userSnap) {
+                    final doctorName = userSnap.data?.name ?? 'Dr. ...';
+                    final date = DateFormat('dd MMM yyyy, hh:mm a')
+                        .format(appointment.dateTime);
+                    return ListTile(
+                      leading:
+                          const Icon(Icons.check_circle, color: Colors.green),
+                      title: Text(
+                        "Confirmed: Dr. $doctorName",
+                        style: const TextStyle(fontWeight: FontWeight.bold),
+                      ),
+                      subtitle: Text("On $date"),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () async {
+                final userId = context.read<UserProvider>().user?.uid;
+                if (userId != null) {
+                  await _appointmentService.markAppointmentsAsRead(userId);
+                }
+                if (mounted) Navigator.of(context).pop();
+              },
+              child: const Text("Clear All"),
+            ),
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text("Close"),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  // --- Other widgets remain the same ---
   Widget _buildHomeTab() {
     return RefreshIndicator(
       onRefresh: () async {
-        // You can add logic here to refresh user data if needed
         final userProvider = context.read<UserProvider>();
         if (userProvider.user != null) {
-          await context.read<FirestoreService>().getProfile(userProvider.user!.uid);
+          await context
+              .read<FirestoreService>()
+              .getProfile(userProvider.user!.uid);
         }
         await Future.delayed(const Duration(seconds: 1));
       },
@@ -87,461 +252,481 @@ class _HomeScreenState extends State<HomeScreen> {
                     color: AppColors.textPrimary,
                   ),
             ),
-            const SizedBox(height: 16),
+
             _buildFeatureGrid(context),
+            _buildDoctorSection(),
+
           ],
         ),
       ),
     );
   }
-
-  // --- build method and navigation remains the same ---
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: AppColors.background,
-        elevation: 0,
-        leading: Padding(
-          padding: const EdgeInsets.all(8.0),
-          child: Container(
-            width: 40,
-            height: 40,
-            decoration: BoxDecoration(
-              color: const Color.fromARGB(0, 59, 169, 243),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: Image.asset(
-              "assets/images/logo.png",
-              width: 25,
-              height: 25,
-            ),
-          ),
-        ),
-        centerTitle: true,
-        title: RichText(
-          text: TextSpan(
-            children: [
-              TextSpan(
-                text: "Mat",
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: const Color.fromRGBO(59, 170, 243, 1),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 30,
-                    ),
-              ),
-              TextSpan(
-                text: "Heal",
-                style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      color: const Color.fromARGB(255, 0, 0, 0),
-                      fontWeight: FontWeight.bold,
-                      fontSize: 30,
-                    ),
-              ),
-            ],
-          ),
-        ),
-        actions: [
-          Builder(
-            builder: (context) {
-              return IconButton(
-                icon: const Icon(
-                    Icons.menu), // Changed icon to settings
-                onPressed: () {
-                  Scaffold.of(context).openEndDrawer(); // Opens the end drawer
-                },
-              );
-            },
-          ),
-        ],
-      ),
-
-      endDrawer: _buildDrawer(context), // 👉 Added Drawer
-
-      body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        selectedItemColor: Colors.blueAccent,
-        unselectedItemColor: Colors.grey,
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(
-            icon: Icon(Icons.home),
-            label: "Home",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.alarm),
-            label: "Reminders",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.smart_toy_outlined),
-            label: "AI",
-          ),
-          BottomNavigationBarItem(
-            icon: Icon(Icons.article),
-            label: "Articles",
-          ),
-        ],
-      ),
-    );
+  
+  Future<void> _saveNotificationPreference(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('notificationsEnabled', value);
   }
-  // --- welcome card (UPDATED) ---
   Widget _buildWelcomeCard() {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
         final user = userProvider.user;
         final profile = userProvider.profile;
 
-        return Card(
-          elevation: 4,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-          child: Container(
-            width: double.infinity,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color.fromARGB(255, 50, 138, 182), Color.fromARGB(255, 142, 221, 226)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
+        return Row(
+          children: [
+            CircleAvatar(
+              radius: 20, // Smaller radius for a more compact look
+              backgroundColor: Colors.white.withOpacity(0.9),
+              backgroundImage: profile?.avatarUrl != null
+                  ? NetworkImage(profile!.avatarUrl!)
+                  : null,
+              child: profile?.avatarUrl == null
+                  ? const Icon(Icons.person, color: Colors.grey, size: 22)
+                  : null,
             ),
-            padding: const EdgeInsets.all(20),
-            child: Column(
+            const SizedBox(width: 12),
+            Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Row(
-                  children: [
-                    CircleAvatar(
-                      radius: 25,
-                      backgroundColor: Colors.white.withOpacity(0.2),
-                      backgroundImage: profile?.avatarUrl != null
-                          ? NetworkImage(profile!.avatarUrl!)
-                          : null,
-                      child: profile?.avatarUrl == null
-                          ? const Icon(Icons.person,
-                              color: Colors.white, size: 30)
-                          : null,
-                    ),
-                    const SizedBox(width: 16),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            'Welcome back,',
-                            style: TextStyle(
-                              color: Colors.white.withOpacity(0.9),
-                              fontSize: 14,
-                            ),
-                          ),
-                          Text(
-                            user?.name ?? 'User',
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 20,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
+                Text(
+                  'Hi, ${user?.name ?? 'User'}',
+                  style: GoogleFonts.poppins(
+                    color: const Color.fromARGB(255, 10, 10, 10),
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
                 ),
-                const SizedBox(height: 16),
-                if (profile?.weeksPregnant != null) ...[
-                  Container(
-                    padding:
-                        const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withOpacity(0.2),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: Text(
-                      'Week ${profile!.weeksPregnant} of pregnancy',
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 12,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
+                Text(
+                  'Welcome back!',
+                  style: GoogleFonts.poppins(
+                    color: const Color.fromARGB(255, 0, 0, 0).withOpacity(0.9),
+                    fontSize: 12,
                   ),
-                ] else ...[
-                  TextButton.icon(
-                    onPressed: () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                            builder: (context) => const ProfileScreen()),
-                      );
-                    },
-                    icon: const Icon(Icons.edit, color: Colors.white, size: 16),
-                    label: const Text(
-                      'Complete your profile',
-                      style: TextStyle(color: Colors.white, fontSize: 12),
-                    ),
-                  ),
-                ],
+                ),
               ],
             ),
-          ),
+          ],
         );
       },
     );
   }
-  // All other widgets (_buildDrawer, _buildFeatureGrid, etc.) remain the same.
-  // ... (Paste the rest of the unchanged widgets from your original code here)
+
   Widget _buildDrawer(BuildContext context) {
-  return Drawer(
-    child: Column(
+    return Drawer(
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.only(top: 30.0),
+            child: Container(
+              height: kToolbarHeight,
+              width: double.infinity,
+              color: const Color.fromARGB(255, 253, 254, 255),
+              alignment: Alignment.center,
+              child: const Text('Settings',
+                  style: TextStyle(
+                      color: Colors.black,
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold)),
+            ),
+          ),
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(8),
+              children: [
+                _buildSettingsSection('Profile', [_buildProfileTile(context)]),
+                _buildSettingsSection(
+                    'Preferences', [_buildThemeToggle(), _buildNotificationToggle()]),
+                const SizedBox(height: 16),
+                _buildSettingsSection('Account', [_buildLogoutTile(context)]),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+   Widget _buildDoctorSection() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.only(top: 30.0),
-          child: Container(
-            height: kToolbarHeight,
-            width: double.infinity,
-            color: const Color.fromARGB(255, 253, 254, 255),
-            alignment: Alignment.center,
-            child: const Text('Settings', style: TextStyle(color: Colors.black, fontSize: 18, fontWeight: FontWeight.bold)),
-          ),
-        ),
-        Expanded(
-          child: ListView(
-            padding: const EdgeInsets.all(8),
+          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              _buildSettingsSection('Profile', [_buildProfileTile(context)]),
-              _buildSettingsSection('Preferences', [_buildThemeToggle(), _buildNotificationToggle()]),
-              const SizedBox(height: 16),
-              _buildSettingsSection('Account', [_buildLogoutTile(context)]),
+              Text(
+                'Find a Doctor',
+                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                      fontWeight: FontWeight.bold,
+                      color: AppColors.textPrimary,
+                    ),
+              ),
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).push(MaterialPageRoute(
+                    builder: (context) => const BookAppointmentScreen(),
+                  ));
+                },
+                child: const Text('View all'),
+              ),
             ],
           ),
         ),
-      ],
-    ),
-  );
-}
+        const SizedBox(height: 16),
+        SizedBox(
+          height: 180, // Give the horizontal list a fixed height
+          child: FutureBuilder<List<UserModel>>(
+            future: context.read<FirestoreService>().getAllDoctors(),
+            builder: (context, snapshot) {
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+                return const Center(child: Text('No doctors available.'));
+              }
 
-Widget _buildProfileTile(BuildContext context) {
-  return ListTile(
-    leading: const Icon(Icons.person, color: AppColors.primary),
-    title: const Text('Profile'),
-    onTap: () {
-      Navigator.of(context).push(MaterialPageRoute(builder: (context) => const ProfileScreen()));
-    },
-  );
-}
-
-Widget _buildSettingsSection(String title, List<Widget> children) {
-  return Card(
-    elevation: 1,
-    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-    margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
-    child: Padding(
-      padding: const EdgeInsets.all(12),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(title, style: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
-          const Divider(height: 16, thickness: 1),
-          ...children,
-        ],
-      ),
-    ),
-  );
-}
-
-Widget _buildThemeToggle() {
-  return Consumer<ThemeProvider>(
-    builder: (context, themeProvider, child) {
-      return SwitchListTile(
-        title: const Text('Dark Mode'),
-        subtitle: const Text('Switch between light and dark theme'),
-        value: themeProvider.isDarkMode,
-        onChanged: (_) => themeProvider.toggleTheme(),
-        secondary: Icon(themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode, color: AppColors.primary),
-      );
-    },
-  );
-}
-
-Widget _buildNotificationToggle() {
-  return SwitchListTile(
-    title: const Text('Notifications'),
-    subtitle: const Text('Receive health reminders and updates'),
-    value: _notificationsEnabled,
-    onChanged: (value) {
-      setState(() => _notificationsEnabled = value);
-      _saveNotificationPreference(value);
-    },
-    secondary: const Icon(Icons.notifications, color: AppColors.primary),
-  );
-}
-
-Widget _buildLogoutTile(BuildContext context) {
-  return ListTile(
-    leading: const Icon(Icons.logout, color: AppColors.error),
-    title: const Text('Logout', style: TextStyle(color: AppColors.error)),
-    onTap: () async {
-      final shouldLogout = await showDialog<bool>(
-        context: context,
-        builder: (context) => AlertDialog(
-          title: const Text('Logout'),
-          content: const Text('Are you sure you want to logout?'),
-          actions: [
-            TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
-            ElevatedButton(
-              onPressed: () => Navigator.of(context).pop(true),
-              style: ElevatedButton.styleFrom(backgroundColor: AppColors.error),
-              child: const Text('Logout'),
-            ),
-          ],
+              final doctors = snapshot.data!;
+              return ListView.separated(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                itemCount: doctors.length,
+                separatorBuilder: (context, index) => const SizedBox(width: 12),
+                itemBuilder: (context, index) {
+                  return _buildDoctorCard(doctors[index]);
+                },
+              );
+            },
+          ),
         ),
-      );
-
-      if (shouldLogout == true && context.mounted) {
-        await context.read<AuthService>().signOut();
-        context.read<UserProvider>().clear();
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const LoginScreen()),
-          (route) => false,
-        );
-      }
-    },
-  );
-}
-
-/// A simple data model for a feature card on the home screen.
-
-Widget _buildFeatureGrid(BuildContext context) {
-  final titleStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: const Color.fromARGB(255, 85, 172, 255),
-      );
-
-  final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-        color: const Color.fromARGB(255, 148, 199, 247),
-      );
-
-  final features = [
-    _Feature(
-      title: 'Medicine Reminders',
-      subtitle: 'Track your medications',
-      icon: Icons.medication_outlined,
-      backgroundColor: const Color(0xFFE3F2FD),
-      iconColor: const Color(0xFF1976D2),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const MedicineRemindersScreen())),
-    ),
-    _Feature(
-      title: 'Your Appointments',
-      subtitle: 'Manage scheduled visits',
-      icon: Icons.calendar_month_outlined,
-      backgroundColor: const Color(0xFFE8F5E8),
-      iconColor: const Color(0xFF388E3C),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const UserAppointmentsScreen())),
-    ),
-    _Feature(
-      title: 'Book an Appointment',
-      subtitle: 'Find a specialist',
-      icon: Icons.edit_calendar_outlined,
-      backgroundColor: const Color(0xFFE0F7FA),
-      iconColor: const Color(0xFF00838F),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const BookAppointmentScreen())),
-    ),
-    _Feature(
-      title: 'MatCommunity',
-      subtitle: 'Share your moments',
-      icon: Icons.connect_without_contact_outlined,
-      backgroundColor: const Color(0xFFFFF3E0),
-      iconColor: const Color(0xFFF57C00),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const CommunityScreen())),
-    ),
-    _Feature(
-      title: 'Diet Suggestions',
-      subtitle: 'Personalized nutrition',
-      icon: Icons.restaurant_menu_outlined,
-      backgroundColor: const Color(0xFFF1F8E9),
-      iconColor: const Color(0xFF689F38),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const DietSuggestionsScreen())),
-    ),
-    _Feature(
-      title: 'Exercise Guide',
-      subtitle: 'Pregnancy-safe workouts',
-      icon: Icons.fitness_center_outlined,
-      backgroundColor: const Color(0xFFE0F2F1),
-      iconColor: const Color(0xFF00695C),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ExerciseSuggestionsScreen())),
-    ),
-     _Feature(
-      title: 'AI Health Assistant',
-      subtitle: 'Ask health questions',
-      icon: Icons.assistant_outlined,
-      backgroundColor: const Color(0xFFEDE7F6),
-      iconColor: const Color(0xFF5E35B1),
-      onTap: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const ChatScreen())),
-    ),
-  ];
-
-  // The GridView is replaced with a horizontally scrolling ListView.
-  return SizedBox(
-    height: 170, // Constrain the height of the horizontal list
-    child: ListView.separated(
-      scrollDirection: Axis.horizontal,
-      padding: const EdgeInsets.symmetric(horizontal: 16), // Padding at the start and end of the list
-      itemCount: features.length,
-      separatorBuilder: (context, index) => const SizedBox(width: 12), // Adds space between items
-      itemBuilder: (context, index) {
-        final feature = features[index];
-        // Each item in the list is now a SizedBox with a fixed width.
-        return SizedBox(
-          width: 150,
-          child: Card(
-            elevation: 2,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-            clipBehavior: Clip.antiAlias,
-            child: InkWell(
-              onTap: feature.onTap,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  CircleAvatar(
-                    radius: 30,
-                    backgroundColor: feature.backgroundColor,
-                    child: Icon(feature.icon, color: feature.iconColor, size: 28),
+      ],
+    );
+  }
+    Widget _buildDoctorCard(UserModel doctor) {
+    return SizedBox(
+      width: 160,
+      child: GestureDetector(
+        onTap: () {
+           Navigator.of(context).push(MaterialPageRoute(
+            builder: (context) => DoctorDetailScreen(doctor: doctor),
+          ));
+        },
+        child: Card(
+          elevation: 3,
+          clipBehavior: Clip.antiAlias,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              // Doctor Image
+              Image.network(
+                doctor.avatarUrl ?? 'https://via.placeholder.com/150',
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) =>
+                    const Icon(Icons.person, size: 80, color: Colors.grey),
+              ),
+              // Gradient Overlay
+              Container(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
                   ),
-                  const SizedBox(height: 12),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text(
-                      feature.title,
-                      style: titleStyle,
-                      textAlign: TextAlign.center,
+                ),
+              ),
+              // Doctor Info
+              Positioned(
+                bottom: 12,
+                left: 12,
+                right: 12,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      "Dr. ${doctor.name}",
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                      ),
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                  ),
-                  const SizedBox(height: 4),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                    child: Text(
-                      feature.subtitle,
-                      style: subtitleStyle,
-                      textAlign: TextAlign.center,
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
+                    Text(
+                      doctor.specialization ?? 'Specialist',
+                      style: TextStyle(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 12,
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
+              // Rating Badge
+              Positioned(
+                top: 8,
+                left: 8,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.black.withOpacity(0.5),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.star, color: Colors.amber, size: 14),
+                      const SizedBox(width: 4),
+                      Text(
+                        doctor.averageRating.toStringAsFixed(1),
+                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildProfileTile(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.person, color: AppColors.primary),
+      title: const Text('Profile'),
+      onTap: () {
+        Navigator.of(context)
+            .push(MaterialPageRoute(builder: (context) => const ProfileScreen()));
+      },
+    );
+  }
+
+  Widget _buildSettingsSection(String title, List<Widget> children) {
+    return Card(
+      elevation: 1,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 0),
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(title,
+                style:
+                    const TextStyle(fontSize: 14, fontWeight: FontWeight.bold)),
+            const Divider(height: 16, thickness: 1),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThemeToggle() {
+    return Consumer<ThemeProvider>(
+      builder: (context, themeProvider, child) {
+        return SwitchListTile(
+          title: const Text('Dark Mode'),
+          subtitle: const Text('Switch between light and dark theme'),
+          value: themeProvider.isDarkMode,
+          onChanged: (_) => themeProvider.toggleTheme(),
+          secondary: Icon(
+              themeProvider.isDarkMode ? Icons.dark_mode : Icons.light_mode,
+              color: AppColors.primary),
         );
       },
-    ),
-  );
+    );
+  }
+
+  Widget _buildNotificationToggle() {
+    return SwitchListTile(
+      title: const Text('Notifications'),
+      subtitle: const Text('Receive health reminders and updates'),
+      value: _notificationsEnabled,
+      onChanged: (value) {
+        setState(() => _notificationsEnabled = value);
+        _saveNotificationPreference(value);
+      },
+      secondary: const Icon(Icons.notifications, color: AppColors.primary),
+    );
+  }
+
+  Widget _buildLogoutTile(BuildContext context) {
+    return ListTile(
+      leading: const Icon(Icons.logout, color: AppColors.error),
+      title: const Text('Logout', style: TextStyle(color: AppColors.error)),
+      onTap: () async {
+        final shouldLogout = await showDialog<bool>(
+          context: context,
+          builder: (context) => AlertDialog(
+            title: const Text('Logout'),
+            content: const Text('Are you sure you want to logout?'),
+            actions: [
+              TextButton(
+                  onPressed: () => Navigator.of(context).pop(false),
+                  child: const Text('Cancel')),
+              ElevatedButton(
+                onPressed: () => Navigator.of(context).pop(true),
+                style:
+                    ElevatedButton.styleFrom(backgroundColor: AppColors.error),
+                child: const Text('Logout'),
+              ),
+            ],
+          ),
+        );
+
+        if (shouldLogout == true && context.mounted) {
+          await context.read<AuthService>().signOut();
+          context.read<UserProvider>().clear();
+          Navigator.of(context).pushAndRemoveUntil(
+            MaterialPageRoute(builder: (context) => const LoginScreen()),
+            (route) => false,
+          );
+        }
+      },
+    );
+  }
+
+  Widget _buildFeatureGrid(BuildContext context) {
+    final titleStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
+          fontWeight: FontWeight.bold,
+          color: const Color.fromARGB(255, 85, 172, 255),
+        );
+
+    final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
+          color: const Color.fromARGB(255, 148, 199, 247),
+        );
+
+    final features = [
+      _Feature(
+        title: 'Medicine Reminders',
+        subtitle: 'Track your medications',
+        icon: Icons.medication_outlined,
+        backgroundColor: const Color(0xFFE3F2FD),
+        iconColor: const Color(0xFF1976D2),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const MedicineRemindersScreen())),
+      ),
+      _Feature(
+        title: 'Your Appointments',
+        subtitle: 'Manage scheduled visits',
+        icon: Icons.calendar_month_outlined,
+        backgroundColor: const Color(0xFFE8F5E8),
+        iconColor: const Color(0xFF388E3C),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const UserAppointmentsScreen())),
+      ),
+      _Feature(
+        title: 'Book an Appointment',
+        subtitle: 'Find a specialist',
+        icon: Icons.edit_calendar_outlined,
+        backgroundColor: const Color(0xFFE0F7FA),
+        iconColor: const Color(0xFF00838F),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const BookAppointmentScreen())),
+      ),
+      _Feature(
+        title: 'MatCommunity',
+        subtitle: 'Share your moments',
+        icon: Icons.connect_without_contact_outlined,
+        backgroundColor: const Color(0xFFFFF3E0),
+        iconColor: const Color(0xFFF57C00),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const CommunityScreen())),
+      ),
+      _Feature(
+        title: 'Diet Suggestions',
+        subtitle: 'Personalized nutrition',
+        icon: Icons.restaurant_menu_outlined,
+        backgroundColor: const Color(0xFFF1F8E9),
+        iconColor: const Color(0xFF689F38),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const DietSuggestionsScreen())),
+      ),
+      _Feature(
+        title: 'Exercise Guide',
+        subtitle: 'Pregnancy-safe workouts',
+        icon: Icons.fitness_center_outlined,
+        backgroundColor: const Color(0xFFE0F2F1),
+        iconColor: const Color(0xFF00695C),
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const ExerciseSuggestionsScreen())),
+      ),
+      _Feature(
+        title: 'AI Health Assistant',
+        subtitle: 'Ask health questions',
+        icon: Icons.assistant_outlined,
+        backgroundColor: const Color(0xFFEDE7F6),
+        iconColor: const Color(0xFF5E35B1),
+        onTap: () => Navigator.push(
+            context, MaterialPageRoute(builder: (context) => const ChatScreen())),
+      ),
+    ];
+
+    return SizedBox(
+      height: 170,
+      child: ListView.separated(
+        scrollDirection: Axis.horizontal,
+        padding: const EdgeInsets.symmetric(horizontal: 16),
+        itemCount: features.length,
+        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        itemBuilder: (context, index) {
+          final feature = features[index];
+          return SizedBox(
+            width: 150,
+            child: Card(
+              elevation: 2,
+              shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20)),
+              clipBehavior: Clip.antiAlias,
+              child: InkWell(
+                onTap: feature.onTap,
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    CircleAvatar(
+                      radius: 30,
+                      backgroundColor: feature.backgroundColor,
+                      child:
+                          Icon(feature.icon, color: feature.iconColor, size: 28),
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        feature.title,
+                        style: titleStyle,
+                        textAlign: TextAlign.center,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                      child: Text(
+                        feature.subtitle,
+                        style: subtitleStyle,
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          );
+        },
+      ),
+    );
+  }
 }
-}
+
 class _Feature {
   final String title;
   final String subtitle;
@@ -559,4 +744,3 @@ class _Feature {
     required this.onTap,
   });
 }
-

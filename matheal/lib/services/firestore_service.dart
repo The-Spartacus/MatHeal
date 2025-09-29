@@ -296,4 +296,6 @@ Future<void> addOrUpdateDoctorRating(DoctorRating rating) async {
       return null;
     }
   }
-}
+
+
+  }

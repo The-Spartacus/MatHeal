@@ -213,7 +213,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF2C3E50), Color(0xFF1B2631)],
+                  colors: [Color.fromARGB(255, 84, 151, 218), Color.fromARGB(255, 45, 150, 255)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),

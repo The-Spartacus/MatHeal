@@ -7,6 +7,7 @@ class Appointment {
   final DateTime dateTime;
   final String notes;
   final String status; // pending, confirmed, cancelled
+  final bool isRead; // ✅ ADDED: To track if the notification has been seen
 
   Appointment({
     required this.id,
@@ -15,6 +16,7 @@ class Appointment {
     required this.dateTime,
     this.notes = "",
     this.status = "pending",
+    this.isRead = false, // ✅ Default to false
   });
 
   factory Appointment.fromFirestore(Map<String, dynamic> data, String id) {
@@ -25,6 +27,7 @@ class Appointment {
       dateTime: (data['dateTime'] as Timestamp).toDate(),
       notes: data['notes'] ?? "",
       status: data['status'] ?? "pending",
+      isRead: data['isRead'] ?? false, // ✅ Read from Firestore
     );
   }
 
@@ -35,6 +38,8 @@ class Appointment {
       'dateTime': Timestamp.fromDate(dateTime),
       'notes': notes,
       'status': status,
+      'isRead': isRead, // ✅ Save to Firestore
     };
   }
 }
+

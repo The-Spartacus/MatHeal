@@ -127,11 +127,12 @@ class _ChatScreenState extends State<ChatScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Row(
+        title: Row(
           children: [
-            CircleAvatar(child: Icon(Icons.psychology)),
-            SizedBox(width: 12),
-            Column(
+            CircleAvatar(
+              child: Image.asset('assets/images/bot.png')),
+            const SizedBox(width: 12),
+            const Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text('AI Health Assistant', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
@@ -186,7 +187,7 @@ class _ChatScreenState extends State<ChatScreen> {
           crossAxisAlignment: CrossAxisAlignment.end,
           children: [
             if (!message.isUser)
-              const CircleAvatar(child: Icon(Icons.psychology)),
+              CircleAvatar(child: Image.asset('assets/images/bot.png')),
             const SizedBox(width: 8),
             Flexible(
               child: Container(
@@ -285,4 +286,3 @@ class _ChatScreenState extends State<ChatScreen> {
     );
   }
 }
-

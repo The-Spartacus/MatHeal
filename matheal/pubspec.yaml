@@ -59,6 +59,7 @@ dependencies:
   flutter_rating_bar: ^4.0.1
   table_calendar: ^3.0.9
   fl_chart: ^1.1.1
+  
 
 
 
@@ -71,6 +72,17 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  fonts:
+    - family: Lobster
+      fonts:
+        - asset: assets/fonts/Lobster-Regular.ttf
+    - family: Satisfy
+      fonts:
+        - asset: assets/fonts/Satisfy-Regular.ttf
+
+
+
   
   assets:
     - .env
@@ -78,7 +90,5 @@ flutter:
     - assets/images/
     - assets/icons/
     - assets/audio/
-    - assets/onboarding/onboarding1.png
-    - assets/onboarding/onboarding2.png
-    - assets/onboarding/onboarding3.png
-    - assets/onboarding/onboarding4.png
+    - assets/onboarding/
+    - assets/fonts/
