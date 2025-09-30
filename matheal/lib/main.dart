@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:matheal/services/tracking_service.dart';
 import 'package:provider/provider.dart';
 import 'package:timezone/data/latest.dart' as tz;
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
@@ -88,6 +89,10 @@ class MatHealApp extends StatelessWidget {
         Provider<FirestoreService>(
           create: (_) => FirestoreService(),
         ),
+        Provider<TrackingService>(
+          create: (_) => TrackingService()
+        ),
+
         Provider<ImageUploadService>(
           create: (_) => ImageUploadService(),
         ), // ✅ ADDED PROVIDER

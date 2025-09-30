@@ -80,6 +80,15 @@ flutter:
     - family: Satisfy
       fonts:
         - asset: assets/fonts/Satisfy-Regular.ttf
+    - family: Cinzel
+      fonts:
+        - asset: assets/fonts/Cinzel-VariableFont_wght.ttf
+    - family: Bricolage_Grotesque
+      fonts:
+        - asset: assets/fonts/BricolageGrotesque-VariableFont_opsz,wdth,wght.ttf
+    - family: Orbitron
+      fonts:
+        - asset: assets/fonts/Orbitron-VariableFont_wght.ttf
 
 
 

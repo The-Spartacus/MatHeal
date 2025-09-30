@@ -6,9 +6,11 @@ import 'package:intl/intl.dart';
 import 'package:matheal/models/appointment_model.dart';
 import 'package:matheal/models/user_model.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
+import 'package:matheal/screens/features/add_edit_log_page.dart';
 import 'package:matheal/screens/features/book_appointment_screen.dart';
 import 'package:matheal/screens/features/community_screen.dart';
 import 'package:matheal/screens/features/doctor/doctor_detail_screen.dart';
+import 'package:matheal/screens/features/tracker_dashboard_page.dart';
 import 'package:matheal/screens/features/user_appointments_screen.dart';
 import 'package:matheal/services/appointment_service.dart';
 import 'package:matheal/services/auth_service.dart';
@@ -67,13 +69,13 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: const Color.fromARGB(255, 255, 255, 255),
+        backgroundColor: Color.fromARGB(255, 255, 255, 255),
         elevation: 0,
-        // leading: Padding(
-        //   padding: const EdgeInsets.all(8.0),
-        //   child: Image.asset("assets/images/logo.png"),
-        // ),
-        // centerTitle: true,
+        leading: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Image.asset("assets/images/logo.png"),
+        ),
+        centerTitle: true,
         title: RichText(
           text: TextSpan(
             children: [
@@ -81,23 +83,22 @@ class _HomeScreenState extends State<HomeScreen> {
                 text: "MAT",
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: const Color.fromRGBO(59, 170, 243, 1),
-                      // fontWeight: FontWeight.bold,
-                      fontFamily: 'Satisfy',
+                      fontWeight: FontWeight.w100,
+                      fontFamily: 'Orbitron',
                     ),
               ),
               TextSpan(
                 text: "HEAL",
                 style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: Colors.black,
-                      fontWeight: FontWeight.bold,
-                      fontFamily: 'Satisfy',
+                      fontWeight: FontWeight.w100,
+                      fontFamily: 'Orbitron',
                     ),
               ),
             ],
           ),
         ),
         actions: [
-          _buildNotificationBell(context),
           Builder(
             builder: (context) {
               return IconButton(
@@ -114,16 +115,17 @@ class _HomeScreenState extends State<HomeScreen> {
         type: BottomNavigationBarType.fixed,
         currentIndex: _selectedIndex,
         onTap: _onItemTapped,
+        backgroundColor: const Color.fromARGB(255, 209, 236, 255),
         selectedItemColor: const Color.fromARGB(255, 47, 125, 165),
         unselectedItemColor: const Color.fromARGB(255, 136, 135, 135),
         showUnselectedLabels: true,
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.home_rounded), label: "Home"),
+          BottomNavigationBarItem(
+              icon: Icon(Icons.home_rounded), label: "Home"),
           BottomNavigationBarItem(icon: Icon(Icons.alarm), label: "Reminders"),
           BottomNavigationBarItem(
               icon: Icon(Icons.smart_toy_outlined), label: "AI"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.article), label: "Articles"),
+          BottomNavigationBarItem(icon: Icon(Icons.article), label: "Articles"),
         ],
       ),
     );
@@ -139,8 +141,10 @@ class _HomeScreenState extends State<HomeScreen> {
       builder: (context, snapshot) {
         // Map QuerySnapshot to a list of Appointment models
         final notifications = snapshot.data?.docs
-            .map((doc) => Appointment.fromFirestore(doc.data() as Map<String, dynamic>, doc.id))
-            .toList() ?? [];
+                .map((doc) => Appointment.fromFirestore(
+                    doc.data() as Map<String, dynamic>, doc.id))
+                .toList() ??
+            [];
         final hasNotifications = notifications.isNotEmpty;
 
         return Badge(
@@ -239,33 +243,33 @@ class _HomeScreenState extends State<HomeScreen> {
         await Future.delayed(const Duration(seconds: 1));
       },
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
+        padding: const EdgeInsets.all(18.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildWelcomeCard(),
             const SizedBox(height: 24),
-            Text(
-              'Your Health Hub',
-              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.textPrimary,
-                  ),
-            ),
-
-            _buildFeatureGrid(context),
+                const SizedBox(width: 24),
+                Text(
+                  'Health Hub',
+                  style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                        fontWeight: FontWeight.w100,
+                        color: AppColors.textPrimary,
+                      ),
+                ),
+                          _buildFeatureGrid(context),
             _buildDoctorSection(),
-
           ],
         ),
       ),
     );
   }
-  
+
   Future<void> _saveNotificationPreference(bool value) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notificationsEnabled', value);
   }
+
   Widget _buildWelcomeCard() {
     return Consumer<UserProvider>(
       builder: (context, userProvider, child) {
@@ -291,10 +295,11 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'Hi, ${user?.name ?? 'User'}',
-                  style: GoogleFonts.poppins(
+                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
                     color: const Color.fromARGB(255, 10, 10, 10),
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
+                    fontFamily: 'Bricolage_Grotesque',
                   ),
                 ),
                 Text(
@@ -306,6 +311,9 @@ class _HomeScreenState extends State<HomeScreen> {
                 ),
               ],
             ),
+            const Spacer(),
+          _buildNotificationBell(context),
+
           ],
         );
       },
@@ -335,8 +343,8 @@ class _HomeScreenState extends State<HomeScreen> {
               padding: const EdgeInsets.all(8),
               children: [
                 _buildSettingsSection('Profile', [_buildProfileTile(context)]),
-                _buildSettingsSection(
-                    'Preferences', [_buildThemeToggle(), _buildNotificationToggle()]),
+                _buildSettingsSection('Preferences',
+                    [_buildThemeToggle(), _buildNotificationToggle()]),
                 const SizedBox(height: 16),
                 _buildSettingsSection('Account', [_buildLogoutTile(context)]),
               ],
@@ -346,19 +354,20 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
     );
   }
-   Widget _buildDoctorSection() {
+
+  Widget _buildDoctorSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 16.0),
+          padding:  EdgeInsets.zero,
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
                 'Find a Doctor',
                 style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.bold,
+                      fontWeight: FontWeight.w100,
                       color: AppColors.textPrimary,
                     ),
               ),
@@ -382,14 +391,16 @@ class _HomeScreenState extends State<HomeScreen> {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return const Center(child: CircularProgressIndicator());
               }
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
+              if (snapshot.hasError ||
+                  !snapshot.hasData ||
+                  snapshot.data!.isEmpty) {
                 return const Center(child: Text('No doctors available.'));
               }
 
               final doctors = snapshot.data!;
               return ListView.separated(
                 scrollDirection: Axis.horizontal,
-                padding: const EdgeInsets.symmetric(horizontal: 16),
+                padding: EdgeInsets.zero,
                 itemCount: doctors.length,
                 separatorBuilder: (context, index) => const SizedBox(width: 12),
                 itemBuilder: (context, index) {
@@ -402,19 +413,21 @@ class _HomeScreenState extends State<HomeScreen> {
       ],
     );
   }
-    Widget _buildDoctorCard(UserModel doctor) {
+
+  Widget _buildDoctorCard(UserModel doctor) {
     return SizedBox(
       width: 160,
       child: GestureDetector(
         onTap: () {
-           Navigator.of(context).push(MaterialPageRoute(
+          Navigator.of(context).push(MaterialPageRoute(
             builder: (context) => DoctorDetailScreen(doctor: doctor),
           ));
         },
         child: Card(
           elevation: 3,
           clipBehavior: Clip.antiAlias,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          shape:
+              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
           child: Stack(
             fit: StackFit.expand,
             children: [
@@ -429,7 +442,7 @@ class _HomeScreenState extends State<HomeScreen> {
               Container(
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
-                    colors: [Colors.transparent, Colors.black.withOpacity(0.8)],
+                    colors: [const Color.fromARGB(0, 247, 244, 244), const Color.fromARGB(255, 17, 17, 17).withOpacity(0.8)],
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                   ),
@@ -468,7 +481,8 @@ class _HomeScreenState extends State<HomeScreen> {
                 top: 8,
                 left: 8,
                 child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
                     color: Colors.black.withOpacity(0.5),
                     borderRadius: BorderRadius.circular(12),
@@ -479,7 +493,8 @@ class _HomeScreenState extends State<HomeScreen> {
                       const SizedBox(width: 4),
                       Text(
                         doctor.averageRating.toStringAsFixed(1),
-                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                        style:
+                            const TextStyle(color: Colors.white, fontSize: 12),
                       ),
                     ],
                   ),
@@ -497,8 +512,8 @@ class _HomeScreenState extends State<HomeScreen> {
       leading: const Icon(Icons.person, color: AppColors.primary),
       title: const Text('Profile'),
       onTap: () {
-        Navigator.of(context)
-            .push(MaterialPageRoute(builder: (context) => const ProfileScreen()));
+        Navigator.of(context).push(
+            MaterialPageRoute(builder: (context) => const ProfileScreen()));
       },
     );
   }
@@ -589,66 +604,66 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildFeatureGrid(BuildContext context) {
-    final titleStyle = Theme.of(context).textTheme.titleSmall?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: const Color.fromARGB(255, 85, 172, 255),
-        );
-
-    final subtitleStyle = Theme.of(context).textTheme.bodySmall?.copyWith(
-          color: const Color.fromARGB(255, 148, 199, 247),
-        );
-
+Widget _buildFeatureGrid(BuildContext context) {
+    // The data for the feature cards, now with shorter titles for a cleaner look.
     final features = [
       _Feature(
-        title: 'Medicine Reminders',
-        subtitle: 'Track your medications',
+        title: 'Reminders',
         icon: Icons.medication_outlined,
+ subtitle: 'Manage your medicine reminders',
         backgroundColor: const Color(0xFFE3F2FD),
         iconColor: const Color(0xFF1976D2),
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const MedicineRemindersScreen())),
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const MedicineRemindersScreen())),
       ),
       _Feature(
-        title: 'Your Appointments',
-        subtitle: 'Manage scheduled visits',
+        title: 'My Schedule',
         icon: Icons.calendar_month_outlined,
+ subtitle: 'View your appointments',
         backgroundColor: const Color(0xFFE8F5E8),
         iconColor: const Color(0xFF388E3C),
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const UserAppointmentsScreen())),
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const UserAppointmentsScreen())),
       ),
       _Feature(
-        title: 'Book an Appointment',
-        subtitle: 'Find a specialist',
+        title: 'Book Now',
         icon: Icons.edit_calendar_outlined,
+ subtitle: 'Book an appointment with a doctor',
         backgroundColor: const Color(0xFFE0F7FA),
         iconColor: const Color(0xFF00838F),
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const BookAppointmentScreen())),
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const BookAppointmentScreen())),
       ),
       _Feature(
-        title: 'MatCommunity',
-        subtitle: 'Share your moments',
+        title: 'Community',
         icon: Icons.connect_without_contact_outlined,
+ subtitle: 'Connect with other parents',
         backgroundColor: const Color(0xFFFFF3E0),
         iconColor: const Color(0xFFF57C00),
         onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (context) => const CommunityScreen())),
       ),
       _Feature(
-        title: 'Diet Suggestions',
-        subtitle: 'Personalized nutrition',
+        title: 'Diet Tips',
         icon: Icons.restaurant_menu_outlined,
+ subtitle: 'Get healthy diet suggestions',
         backgroundColor: const Color(0xFFF1F8E9),
         iconColor: const Color(0xFF689F38),
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const DietSuggestionsScreen())),
+        onTap: () => Navigator.push(
+            context,
+            MaterialPageRoute(
+                builder: (context) => const DietSuggestionsScreen())),
       ),
       _Feature(
-        title: 'Exercise Guide',
-        subtitle: 'Pregnancy-safe workouts',
+        title: 'Workouts',
         icon: Icons.fitness_center_outlined,
+ subtitle: 'Find pregnancy-safe exercises',
         backgroundColor: const Color(0xFFE0F2F1),
         iconColor: const Color(0xFF00695C),
         onTap: () => Navigator.push(
@@ -657,67 +672,68 @@ class _HomeScreenState extends State<HomeScreen> {
                 builder: (context) => const ExerciseSuggestionsScreen())),
       ),
       _Feature(
-        title: 'AI Health Assistant',
-        subtitle: 'Ask health questions',
-        icon: Icons.assistant_outlined,
+        title: 'Articles',
+        icon: Icons.newspaper_outlined,
+ subtitle: 'Ask our AI health assistant',
         backgroundColor: const Color(0xFFEDE7F6),
         iconColor: const Color(0xFF5E35B1),
-        onTap: () => Navigator.push(
-            context, MaterialPageRoute(builder: (context) => const ChatScreen())),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const ArticleListScreen())),
+      ),
+            _Feature(
+        title: 'mental health',
+        icon: Icons.psychology,
+ subtitle: 'Ask our AI health assistant',
+        backgroundColor: const Color(0xFFEDE7F6),
+        iconColor: const Color(0xFF5E35B1),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => AddEditLogScreen(date: DateTime.now()))),
+      ),
+                  _Feature(
+        title: 'Log',
+        icon: Icons.history,
+ subtitle: 'Ask our AI health assistant',
+        backgroundColor: const Color(0xFFEDE7F6),
+        iconColor: const Color(0xFF5E35B1),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => TrackerDashboardPage())),
       ),
     ];
 
     return SizedBox(
-      height: 170,
+      height: 100, 
       child: ListView.separated(
         scrollDirection: Axis.horizontal,
-        padding: const EdgeInsets.symmetric(horizontal: 16),
+        padding:  EdgeInsets.zero,
         itemCount: features.length,
-        separatorBuilder: (context, index) => const SizedBox(width: 12),
+        separatorBuilder: (context, index) => const SizedBox(width: 20), // Increased spacing
         itemBuilder: (context, index) {
           final feature = features[index];
-          return SizedBox(
-            width: 150,
-            child: Card(
-              elevation: 2,
-              shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20)),
-              clipBehavior: Clip.antiAlias,
-              child: InkWell(
-                onTap: feature.onTap,
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    CircleAvatar(
-                      radius: 30,
-                      backgroundColor: feature.backgroundColor,
-                      child:
-                          Icon(feature.icon, color: feature.iconColor, size: 28),
+          return InkWell(
+            onTap: feature.onTap,
+            borderRadius: BorderRadius.circular(40), // Make the ripple effect circular
+            child: SizedBox(
+              width: 70, // Fixed width for each item
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  CircleAvatar(
+                    radius: 30,
+                    backgroundColor: feature.backgroundColor,
+                    child: Icon(feature.icon,
+                        color: feature.iconColor, size: 28),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    feature.title,
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      fontWeight: FontWeight.w500,
                     ),
-                    const SizedBox(height: 12),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        feature.title,
-                        style: titleStyle,
-                        textAlign: TextAlign.center,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text(
-                        feature.subtitle,
-                        style: subtitleStyle,
-                        textAlign: TextAlign.center,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
+                    textAlign: TextAlign.center,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ],
               ),
             ),
           );

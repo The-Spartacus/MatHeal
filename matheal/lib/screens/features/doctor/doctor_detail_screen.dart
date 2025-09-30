@@ -369,7 +369,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
           height: 60,
           child: ListView.separated(
             scrollDirection: Axis.horizontal,
-            itemCount: 7,
+            itemCount: 100,
             separatorBuilder: (context, index) => const SizedBox(width: 12),
             itemBuilder: (context, index) {
               final date = DateTime.now().add(Duration(days: index));

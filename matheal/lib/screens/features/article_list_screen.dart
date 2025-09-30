@@ -1,6 +1,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:intl/intl.dart'; // ✅ Import the intl package for date formatting
 import 'package:matheal/screens/article_detail_screen.dart';
 import '../../models/article_model.dart';
 import '../../models/user_model.dart';
@@ -16,6 +17,27 @@ class ArticleListScreen extends StatefulWidget {
 
 class _ArticleListScreenState extends State<ArticleListScreen> {
   bool showSaved = false;
+
+  // ✅ --- NEW HELPER FUNCTION TO FORMAT THE ARTICLE'S AGE ---
+  /// Formats a DateTime into a relative time string (e.g., "2d ago").
+  String _formatDateAgo(DateTime date) {
+    final now = DateTime.now();
+    final difference = now.difference(date);
+
+    if (difference.inDays > 30) {
+      return DateFormat('dd MMM yyyy').format(date); // e.g., 25 Sep 2025
+    } else if (difference.inDays >= 7) {
+      return '${(difference.inDays / 7).floor()}w ago'; // e.g., 3w ago
+    } else if (difference.inDays > 0) {
+      return '${difference.inDays}d ago'; // e.g., 5d ago
+    } else if (difference.inHours > 0) {
+      return '${difference.inHours}h ago'; // e.g., 8h ago
+    } else if (difference.inMinutes > 0) {
+      return '${difference.inMinutes}m ago'; // e.g., 15m ago
+    } else {
+      return 'Just now';
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,7 +70,12 @@ class _ArticleListScreenState extends State<ArticleListScreen> {
               return FutureBuilder<UserModel?>(
                 future: FirestoreService().getDoctorById(article.authorId),
                 builder: (context, docSnap) {
+                  // Use a placeholder while loading doctor info
+                  if (docSnap.connectionState == ConnectionState.waiting) {
+                     return const Card(child: SizedBox(height: 200, child: Center(child: CircularProgressIndicator())));
+                  }
                   if (!docSnap.hasData) return const SizedBox.shrink();
+                  
                   final doctor = docSnap.data!;
                   return _buildArticleCard(article, doctor, currentUser.uid);
                 },
@@ -75,7 +102,10 @@ class _ArticleListScreenState extends State<ArticleListScreen> {
             ListTile(
               leading: CircleAvatar(backgroundImage: NetworkImage(doctor.avatarUrl ?? '')),
               title: Text("Dr. ${doctor.name}", style: const TextStyle(fontWeight: FontWeight.bold)),
-              subtitle: Text(doctor.specialization ?? 'Specialist'),
+              // ✅ SUBTITLE UPDATED TO SHOW SPECIALIZATION AND ARTICLE AGE
+              subtitle: Text(
+                '${doctor.specialization ?? 'Specialist'} • ${_formatDateAgo(article.datePublished)}',
+              ),
             ),
 
             // Image
@@ -149,4 +179,3 @@ class _ArticleListScreenState extends State<ArticleListScreen> {
     );
   }
 }
-
