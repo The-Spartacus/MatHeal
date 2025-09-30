@@ -3,7 +3,6 @@ import 'package:intl/intl.dart';
 import 'package:matheal/models/daily_log.dart';
 import 'package:matheal/providers/user_provider.dart';
 import 'package:matheal/services/tracking_service.dart';
-import 'package:matheal/utils/theme.dart';
 import 'package:provider/provider.dart';
 
 class AddEditLogScreen extends StatefulWidget {

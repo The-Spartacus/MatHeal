@@ -134,7 +134,7 @@ class _TrackerDashboardPageState extends State<TrackerDashboardPage> {
                         right: 1,
                         bottom: 1,
                         child: Text(
-                          (events.first as DailyLog).mood.emoji,
+                          (events.first).mood.emoji,
                           style: const TextStyle(fontSize: 12),
                         ),
                       );
