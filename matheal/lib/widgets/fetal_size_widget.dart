@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_svg/flutter_svg.dart'; // <-- ADD THIS IMPORT
 
 // The data model and data map remain the same
 class FetalSizeData {
@@ -28,103 +29,117 @@ final Map<int, FetalSizeData> _fetalSizeDataMap = {
   40: FetalSizeData(fruit: 'Watermelon', imageUrl: 'https://i.imgur.com/kSj2pEM.png', length: '51.2 cm', weight: '3.4 kg'),
 };
 
-class FetalSizeWelcomeCard extends StatelessWidget {
+class FetalSizeWidget extends StatelessWidget {
   final int week;
 
-  const FetalSizeWelcomeCard({super.key, required this.week});
+  const FetalSizeWidget({super.key, required this.week});
 
   @override
   Widget build(BuildContext context) {
-    final data = _fetalSizeDataMap[week] ?? _fetalSizeDataMap[4];
+    // --- FIX: Correctly formatted data retrieval ---
+    final closestWeek = _fetalSizeDataMap.keys.where((key) => key <= week).lastOrNull;
+    final data = _fetalSizeDataMap[closestWeek ?? _fetalSizeDataMap.keys.first];
+    
     if (data == null) return const SizedBox.shrink();
 
     final theme = Theme.of(context);
 
-    return SizedBox(
-      width: double.infinity,
-      child: GestureDetector(
-        onTap: () {
-          print('Fetal size card tapped!');
-        },
-        child: Container(
-          decoration: BoxDecoration(
-            // --- vvvv CHANGES ARE HERE vvvv ---
-            
-            // Replace the 'gradient' with an 'image' decoration
-            image: DecorationImage(
-              image: const AssetImage('assets/images/card_background.png'),
-              fit: BoxFit.cover,
-              // Optional: This adds a dark overlay to make white text more readable
-              colorFilter: ColorFilter.mode(
-                Colors.black.withOpacity(0.4),
-                BlendMode.darken,
+    return Container(
+  decoration: BoxDecoration(
+    gradient: LinearGradient(
+      colors: [
+        Theme.of(context).primaryColor.withOpacity(0.8),
+        Theme.of(context).primaryColor.withOpacity(0.9),
+      ],
+      begin: Alignment.topLeft,
+      end: Alignment.bottomRight,
+    ),
+    borderRadius: BorderRadius.circular(16),
+    boxShadow: [
+      BoxShadow(
+        color: Colors.black.withOpacity(0.1),
+        blurRadius: 10,
+        offset: const Offset(0, 4),
+      ),
+    ],
+  ),
+      child: Padding(
+        padding: const EdgeInsets.all(10.0),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.center,
+          children: [
+            // --- FIX: Replaced DecorationImage with SvgPicture.asset to correctly display SVG ---
+            Container(
+              width: 80,
+              height: 80,
+              padding: const EdgeInsets.all(0.0),
+              decoration: BoxDecoration(
+                color: Colors.white.withOpacity(1.0),
+                border: Border.all(color: Colors.white, width: 1),
+                borderRadius: BorderRadius.circular(10.0),
+              ),
+              child: SvgPicture.asset(
+                'assets/images/Maternal.svg',
+                colorFilter: const ColorFilter.mode(Color.fromARGB(255, 255, 118, 248), BlendMode.srcIn),
               ),
             ),
-            
-            // --- ^^^^ CHANGES ARE HERE ^^^^
-            
-            borderRadius: BorderRadius.circular(16),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.2),
-                blurRadius: 10,
-                offset: const Offset(0, 4),
-              ),
-            ],
-          ),
-          child: Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
-              children: [
-                CircleAvatar(
-                  radius: 30,
-                  backgroundColor: Colors.white.withOpacity(0.2),
-                  child: Padding(
-                    padding: const EdgeInsets.all(5.0),
-                    child: Image.network(
-                      data.imageUrl,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.error, color: Colors.white),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 16),
-                Expanded(
+            const SizedBox(width: 16.0),
+
+            // --- UI IMPROVEMENT: Re-structured text for better readability ---
+            Padding(
+              padding: const EdgeInsets.all(0.0),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        "Week $week Update",
-                        style: theme.textTheme.bodyMedium?.copyWith(
-                          color: Colors.white.withOpacity(1),
-                          fontWeight: FontWeight.bold,
-                        ),
+                        'Week $week Update',
+                        style: theme.textTheme.titleLarge?.copyWith(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 2.0),
                       RichText(
                         text: TextSpan(
-                          style: theme.textTheme.titleMedium?.copyWith(color: Colors.white),
+                          style: theme.textTheme.bodyMedium?.copyWith(color: Colors.grey.shade300),
                           children: [
-                            const TextSpan(
-                              text: 'Your baby is the size of a ',
-                            ),
+                            const TextSpan(text: 'Your baby is the size of a \n'),
                             TextSpan(
                               text: data.fruit,
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
+                                color: Colors.white,
                               ),
                             ),
                           ],
                         ),
                       ),
+                      const Divider(height: 1,color: Colors.white30),
+                      _buildStatRow(context, icon: Icons.straighten, label: 'Length: ${data.length}'),
+                      const SizedBox(height: 4),
+                      _buildStatRow(context, icon: Icons.monitor_weight_outlined, label: 'Weight: ${data.weight}'),
                     ],
                   ),
                 ),
-                const SizedBox(width: 8),
               ],
-            ),
-          ),
         ),
       ),
+    );
+  }
+  
+  // Helper for displaying stats with icons
+  Widget _buildStatRow(BuildContext context, {required IconData icon, required String label}) {
+    return Row(
+      children: [
+        Icon(icon, color: Colors.white70, size: 16),
+        const SizedBox(width: 8),
+        Text(
+          label,
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                color: Colors.white,
+              ),
+        ),
+      ],
     );
   }
 }

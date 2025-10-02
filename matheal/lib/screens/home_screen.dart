@@ -9,6 +9,7 @@ import 'package:matheal/screens/auth/login_screen.dart';
 import 'package:matheal/screens/features/book_appointment_screen.dart';
 import 'package:matheal/screens/features/community_screen.dart';
 import 'package:matheal/screens/features/doctor/doctor_detail_screen.dart';
+import 'package:matheal/screens/features/health_prediction_screen.dart';
 import 'package:matheal/screens/features/tracker_dashboard_page.dart';
 import 'package:matheal/screens/features/user_appointments_screen.dart';
 import 'package:matheal/services/appointment_service.dart';
@@ -304,7 +305,7 @@ Widget _buildDisplayView() {
             // +++ ADD THE NEW WIDGET HERE +++
             if (profile != null && profile.currentWeeksPregnant != null) ...[
               const SizedBox(height: 14),
-              FetalSizeWelcomeCard(week: profile.currentWeeksPregnant!),
+              FetalSizeWidget(week: profile.currentWeeksPregnant!),
               const SizedBox(height: 10),
             ],
             
@@ -324,7 +325,7 @@ Widget _buildDisplayView() {
         return Row(
           children: [
             CircleAvatar(
-              radius: 20, // Smaller radius for a more compact look
+              radius: 25, // Smaller radius for a more compact look
               backgroundColor: Colors.white.withOpacity(0.9),
               backgroundImage: profile?.avatarUrl != null
                   ? NetworkImage(profile!.avatarUrl!)
@@ -694,6 +695,15 @@ Widget _buildDoctorCard(UserModel doctor) {
 Widget _buildFeatureGrid(BuildContext context) {
     // The data for the feature cards, now with shorter titles for a cleaner look.
     final features = [
+            _Feature(
+        title: 'Risk Predictor',
+        icon: Icons.connect_without_contact_outlined,
+ subtitle: 'Predict pregnancy risk',
+        backgroundColor: const Color(0xFFFFF3E0),
+        iconColor: const Color(0xFFF57C00),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const HealthRiskPredictor())),
+      ),
       _Feature(
         title: 'Community',
         icon: Icons.connect_without_contact_outlined,
