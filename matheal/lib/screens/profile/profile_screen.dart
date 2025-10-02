@@ -45,7 +45,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
         final profile = context.read<UserProvider>().profile;
         if (profile != null) {
           _ageController.text = profile.age?.toString() ?? '';
-          _weeksController.text = profile.weeksPregnant?.toString() ?? '';
+          // CHANGED: Use the new getter to show the calculated current week
+          _weeksController.text = profile.currentWeeksPregnant?.toString() ?? '';
           _selectedConditions.clear();
           _selectedConditions.addAll(profile.conditions);
           setState(() {});
@@ -71,10 +72,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
       if (user == null) throw Exception('User not found');
 
       final finalAvatarUrl = newAvatarUrl ?? userProvider.profile?.avatarUrl;
+      final enteredWeeks = int.tryParse(_weeksController.text);
+
+      // CHANGED: Save the anchor week and the current date
       final updatedProfile = UserProfile(
         uid: user.uid,
         age: int.tryParse(_ageController.text),
-        weeksPregnant: int.tryParse(_weeksController.text),
+        anchorWeek: enteredWeeks,
+        anchorDate: enteredWeeks != null ? DateTime.now() : null, // Save today's date as the anchor
         conditions: _selectedConditions,
         avatarUrl: finalAvatarUrl,
       );
@@ -178,7 +183,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           padding: const EdgeInsets.all(16.0),
           child: Column(
             children: [
-              _buildAvatar(), // Avatar is shared between views
+              _buildAvatar(),
               const SizedBox(height: 16),
               Text(
                 user.name,
@@ -209,10 +214,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             subtitle: profile.age != null ? '${profile.age} years' : 'Not specified',
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
+          // CHANGED: Use the new getter to show the calculated current week
           _buildDisplayTile(
             icon: Icons.child_care_outlined,
             title: 'Weeks Pregnant',
-            subtitle: profile.weeksPregnant != null ? '${profile.weeksPregnant} weeks' : 'Not specified',
+            subtitle: profile.currentWeeksPregnant != null ? '${profile.currentWeeksPregnant} weeks' : 'Not specified',
           ),
           const Divider(height: 1, indent: 16, endIndent: 16),
           _buildDisplayConditions(profile.conditions),
@@ -252,7 +258,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   }
 
   // --- WIDGETS FOR EDITING MODE ---
-
+  
   Widget _buildEditView() {
     return SingleChildScrollView(
       padding: const EdgeInsets.all(16),

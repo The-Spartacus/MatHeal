@@ -6,7 +6,6 @@ import 'package:intl/intl.dart';
 import 'package:matheal/models/appointment_model.dart';
 import 'package:matheal/models/user_model.dart';
 import 'package:matheal/screens/auth/login_screen.dart';
-import 'package:matheal/screens/features/add_edit_log_page.dart';
 import 'package:matheal/screens/features/book_appointment_screen.dart';
 import 'package:matheal/screens/features/community_screen.dart';
 import 'package:matheal/screens/features/doctor/doctor_detail_screen.dart';
@@ -15,6 +14,7 @@ import 'package:matheal/screens/features/user_appointments_screen.dart';
 import 'package:matheal/services/appointment_service.dart';
 import 'package:matheal/services/auth_service.dart';
 import 'package:matheal/services/firestore_service.dart';
+import 'package:matheal/widgets/fetal_size_widget.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:provider/provider.dart';
 import '../providers/user_provider.dart';
@@ -68,7 +68,8 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
+      appBar: _selectedIndex == 0
+          ? AppBar(
         backgroundColor: Color.fromARGB(255, 255, 255, 255),
         elevation: 0,
         leading: Padding(
@@ -79,20 +80,21 @@ class _HomeScreenState extends State<HomeScreen> {
         title: RichText(
           text: TextSpan(
             children: [
+TextSpan(
+  text: "mat",
+  style: GoogleFonts.niconne(
+    color: const Color.fromRGBO(59, 170, 243, 1),
+    fontWeight: FontWeight.w100,
+    fontSize: 32
+  ),
+),
+
               TextSpan(
-                text: "MAT",
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      color: const Color.fromRGBO(59, 170, 243, 1),
-                      fontWeight: FontWeight.w100,
-                      fontFamily: 'Orbitron',
-                    ),
-              ),
-              TextSpan(
-                text: "HEAL",
-                style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                text: "Heal",
+                style: GoogleFonts.niconne(
                       color: Colors.black,
                       fontWeight: FontWeight.w100,
-                      fontFamily: 'Orbitron',
+                      fontSize: 32
                     ),
               ),
             ],
@@ -108,29 +110,43 @@ class _HomeScreenState extends State<HomeScreen> {
             },
           ),
         ],
-      ),
+          ):null,
       endDrawer: _buildDrawer(context),
       body: _screens[_selectedIndex],
-      bottomNavigationBar: BottomNavigationBar(
-        type: BottomNavigationBarType.fixed,
-        currentIndex: _selectedIndex,
-        onTap: _onItemTapped,
-        backgroundColor: const Color.fromARGB(255, 209, 236, 255),
-        selectedItemColor: const Color.fromARGB(255, 47, 125, 165),
-        unselectedItemColor: const Color.fromARGB(255, 136, 135, 135),
-        showUnselectedLabels: true,
-        items: const [
-          BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded), label: "Home"),
-          BottomNavigationBarItem(icon: Icon(Icons.alarm), label: "Reminders"),
-          BottomNavigationBarItem(
-              icon: Icon(Icons.smart_toy_outlined), label: "AI"),
-          BottomNavigationBarItem(icon: Icon(Icons.article), label: "Articles"),
-        ],
-      ),
+bottomNavigationBar: BottomNavigationBar(
+  type: BottomNavigationBarType.fixed,
+  currentIndex: _selectedIndex,
+  onTap: _onItemTapped,
+  backgroundColor: const Color.fromARGB(255, 32, 159, 223),
+  
+  // --- CHANGES START HERE ---
+
+  // 1. Create a clear contrast for the active tab
+  selectedItemColor: Colors.white,
+  
+  // 2. Use a semi-transparent white for inactive items
+  unselectedItemColor: Colors.white.withOpacity(0.6),
+
+  // 3. Make the active icon slightly larger for a subtle "pop"
+  selectedIconTheme: const IconThemeData(size: 30),
+  
+  // showSelectedLabels: false,
+
+  // showUnselectedLabels: true,
+
+  // --- CHANGES END HERE ---
+
+  items: const [
+    BottomNavigationBarItem(
+        icon: Icon(Icons.home_rounded), label: "Home"),
+    BottomNavigationBarItem(icon: Icon(Icons.alarm), label: "Reminders"),
+    BottomNavigationBarItem(
+        icon: Icon(Icons.smart_toy_outlined), label: "AI"),
+    BottomNavigationBarItem(icon: Icon(Icons.article), label: "Articles"),
+  ],
+),
     );
   }
-
   // ✅ --- NOTIFICATION BELL WIDGET UPDATED ---
   Widget _buildNotificationBell(BuildContext context) {
     final user = context.watch<UserProvider>().user;
@@ -243,13 +259,12 @@ class _HomeScreenState extends State<HomeScreen> {
         await Future.delayed(const Duration(seconds: 1));
       },
       child: SingleChildScrollView(
-        padding: const EdgeInsets.all(18.0),
+        padding: const EdgeInsets.all(16.0),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildWelcomeCard(),
-            const SizedBox(height: 24),
-                const SizedBox(width: 24),
+                _buildDisplayView() ,
                 Text(
                   'Health Hub',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
@@ -269,6 +284,36 @@ class _HomeScreenState extends State<HomeScreen> {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('notificationsEnabled', value);
   }
+  // ... inside the _buildDisplayView method
+
+Widget _buildDisplayView() {
+  return Consumer<UserProvider>(
+    builder: (context, userProvider, child) {
+      final user = userProvider.user;
+      final profile = userProvider.profile;
+
+      if (user == null) {
+        return const Center(child: CircularProgressIndicator());
+      }
+
+      return SingleChildScrollView(
+        padding: const EdgeInsets.all(0.0),
+        child: Column(
+          children: [
+
+            // +++ ADD THE NEW WIDGET HERE +++
+            if (profile != null && profile.currentWeeksPregnant != null) ...[
+              const SizedBox(height: 14),
+              FetalSizeWelcomeCard(week: profile.currentWeeksPregnant!),
+              const SizedBox(height: 10),
+            ],
+            
+          ],
+        ),
+      );
+    },
+  );
+}
 
   Widget _buildWelcomeCard() {
     return Consumer<UserProvider>(
@@ -295,11 +340,10 @@ class _HomeScreenState extends State<HomeScreen> {
               children: [
                 Text(
                   'Hi, ${user?.name ?? 'User'}',
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  style: GoogleFonts.lobsterTwo(
                     color: const Color.fromARGB(255, 10, 10, 10),
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    fontFamily: 'Bricolage_Grotesque',
+                    fontSize: 18,
+                    fontWeight: FontWeight.w500,
                   ),
                 ),
                 Text(
@@ -355,157 +399,200 @@ class _HomeScreenState extends State<HomeScreen> {
     );
   }
 
-  Widget _buildDoctorSection() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Padding(
-          padding:  EdgeInsets.zero,
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Find a Doctor',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                      fontWeight: FontWeight.w100,
-                      color: AppColors.textPrimary,
-                    ),
-              ),
-              TextButton(
-                onPressed: () {
-                  Navigator.of(context).push(MaterialPageRoute(
-                    builder: (context) => const BookAppointmentScreen(),
-                  ));
-                },
-                child: const Text('View all'),
-              ),
-            ],
-          ),
-        ),
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 180, // Give the horizontal list a fixed height
-          child: FutureBuilder<List<UserModel>>(
-            future: context.read<FirestoreService>().getAllDoctors(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return const Center(child: CircularProgressIndicator());
-              }
-              if (snapshot.hasError ||
-                  !snapshot.hasData ||
-                  snapshot.data!.isEmpty) {
-                return const Center(child: Text('No doctors available.'));
-              }
-
-              final doctors = snapshot.data!;
-              return ListView.separated(
-                scrollDirection: Axis.horizontal,
-                padding: EdgeInsets.zero,
-                itemCount: doctors.length,
-                separatorBuilder: (context, index) => const SizedBox(width: 12),
-                itemBuilder: (context, index) {
-                  return _buildDoctorCard(doctors[index]);
-                },
-              );
-            },
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildDoctorCard(UserModel doctor) {
-    return SizedBox(
-      width: 160,
-      child: GestureDetector(
-        onTap: () {
-          Navigator.of(context).push(MaterialPageRoute(
-            builder: (context) => DoctorDetailScreen(doctor: doctor),
-          ));
-        },
-        child: Card(
-          elevation: 3,
-          clipBehavior: Clip.antiAlias,
-          shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-          child: Stack(
-            fit: StackFit.expand,
-            children: [
-              // Doctor Image
-              Image.network(
-                doctor.avatarUrl ?? 'https://via.placeholder.com/150',
-                fit: BoxFit.cover,
-                errorBuilder: (context, error, stackTrace) =>
-                    const Icon(Icons.person, size: 80, color: Colors.grey),
-              ),
-              // Gradient Overlay
-              Container(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [const Color.fromARGB(0, 247, 244, 244), const Color.fromARGB(255, 17, 17, 17).withOpacity(0.8)],
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+Widget _buildDoctorSection() {
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      Padding(
+        padding: EdgeInsets.zero,
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Find a Doctor',
+              style: Theme.of(context).textTheme.headlineSmall?.copyWith(
+                    fontWeight: FontWeight.w400,
+                    color: AppColors.textPrimary,
                   ),
+            ),
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).push(MaterialPageRoute(
+                  builder: (context) => const BookAppointmentScreen(),
+                ));
+              },
+              child: const Text('View all'),
+            ),
+          ],
+        ),
+      ),
+      const SizedBox(height: 16),
+
+      /// Cards + Swipe Arrow
+      SizedBox(
+        height: 180, // Fixed height for horizontal list
+        child: FutureBuilder<List<UserModel>>(
+          future: context.read<FirestoreService>().getAllDoctors(),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
+            if (snapshot.hasError ||
+                !snapshot.hasData ||
+                snapshot.data!.isEmpty) {
+              return const Center(child: Text('No doctors available.'));
+            }
+
+            final doctors = snapshot.data!;
+
+            return Stack(
+              children: [
+                // Horizontal Doctor List
+                ListView.separated(
+                  scrollDirection: Axis.horizontal,
+                  padding: EdgeInsets.zero,
+                  itemCount: doctors.length,
+                  separatorBuilder: (context, index) =>
+                      const SizedBox(width: 12),
+                  itemBuilder: (context, index) {
+                    return _buildDoctorCard(doctors[index]);
+                  },
+                ),
+
+                // Right-side Swipe Arrow
+                // Positioned(
+                //   right: 0,
+                //   top: 0,
+                //   bottom: 0,
+                //   child: IgnorePointer(
+                //     ignoring: true, // don't block swipe
+                //     child: Container(
+                //       width: 3,
+                //       decoration: BoxDecoration(
+                //         gradient: LinearGradient(
+                //           colors: [
+                //             const Color.fromARGB(0, 247, 245, 245),
+                //             const Color.fromARGB(0, 255, 255, 255).withOpacity(0.9),
+                //           ],
+                //           begin: Alignment.centerLeft,
+                //           end: Alignment.centerRight,
+                //         ),
+                //       ),
+                //       child: const Center(
+                //         child: Icon(
+                //           Icons.arrow_forward_ios,
+                //           size: 18,
+                //           color: Colors.grey,
+                //         ),
+                //       ),
+                //     ),
+                //   ),
+                // ),
+              ],
+            );
+          },
+        ),
+      ),
+    ],
+  );
+}
+
+Widget _buildDoctorCard(UserModel doctor) {
+  return SizedBox(
+    width: 160,
+    child: GestureDetector(
+      onTap: () {
+        Navigator.of(context).push(MaterialPageRoute(
+          builder: (context) => DoctorDetailScreen(doctor: doctor),
+        ));
+      },
+      child: Card(
+        elevation: 3,
+        clipBehavior: Clip.antiAlias,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Stack(
+          fit: StackFit.expand,
+          children: [
+            // Doctor Image
+            Image.network(
+              doctor.avatarUrl ?? 'https://via.placeholder.com/150',
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) =>
+                  const Icon(Icons.person, size: 80, color: Colors.grey),
+            ),
+
+            // Gradient Overlay
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    const Color.fromARGB(0, 247, 244, 244),
+                    const Color.fromARGB(111, 17, 17, 17).withOpacity(0.8),
+                  ],
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
                 ),
               ),
-              // Doctor Info
-              Positioned(
-                bottom: 12,
-                left: 12,
-                right: 12,
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      "Dr. ${doctor.name}",
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
-                      ),
-                      maxLines: 2,
-                      overflow: TextOverflow.ellipsis,
+            ),
+
+            // Doctor Info
+            Positioned(
+              bottom: 12,
+              left: 12,
+              right: 12,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "Dr. ${doctor.name}",
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
                     ),
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    doctor.specialization ?? 'Specialist',
+                    style: TextStyle(
+                      color: Colors.white.withOpacity(0.9),
+                      fontSize: 12,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Rating Badge
+            Positioned(
+              top: 8,
+              left: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                decoration: BoxDecoration(
+                  color: Colors.black.withOpacity(0.5),
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 14),
+                    const SizedBox(width: 4),
                     Text(
-                      doctor.specialization ?? 'Specialist',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 12,
-                      ),
+                      doctor.averageRating.toStringAsFixed(1),
+                      style: const TextStyle(color: Colors.white, fontSize: 12),
                     ),
                   ],
                 ),
               ),
-              // Rating Badge
-              Positioned(
-                top: 8,
-                left: 8,
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                  decoration: BoxDecoration(
-                    color: Colors.black.withOpacity(0.5),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.star, color: Colors.amber, size: 14),
-                      const SizedBox(width: 4),
-                      Text(
-                        doctor.averageRating.toStringAsFixed(1),
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
+
 
   Widget _buildProfileTile(BuildContext context) {
     return ListTile(
@@ -608,15 +695,13 @@ Widget _buildFeatureGrid(BuildContext context) {
     // The data for the feature cards, now with shorter titles for a cleaner look.
     final features = [
       _Feature(
-        title: 'Reminders',
-        icon: Icons.medication_outlined,
- subtitle: 'Manage your medicine reminders',
-        backgroundColor: const Color(0xFFE3F2FD),
-        iconColor: const Color(0xFF1976D2),
-        onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const MedicineRemindersScreen())),
+        title: 'Community',
+        icon: Icons.connect_without_contact_outlined,
+ subtitle: 'Connect with other parents',
+        backgroundColor: const Color(0xFFFFF3E0),
+        iconColor: const Color(0xFFF57C00),
+        onTap: () => Navigator.push(context,
+            MaterialPageRoute(builder: (context) => const CommunityScreen())),
       ),
       _Feature(
         title: 'My Schedule',
@@ -628,26 +713,6 @@ Widget _buildFeatureGrid(BuildContext context) {
             context,
             MaterialPageRoute(
                 builder: (context) => const UserAppointmentsScreen())),
-      ),
-      _Feature(
-        title: 'Book Now',
-        icon: Icons.edit_calendar_outlined,
- subtitle: 'Book an appointment with a doctor',
-        backgroundColor: const Color(0xFFE0F7FA),
-        iconColor: const Color(0xFF00838F),
-        onTap: () => Navigator.push(
-            context,
-            MaterialPageRoute(
-                builder: (context) => const BookAppointmentScreen())),
-      ),
-      _Feature(
-        title: 'Community',
-        icon: Icons.connect_without_contact_outlined,
- subtitle: 'Connect with other parents',
-        backgroundColor: const Color(0xFFFFF3E0),
-        iconColor: const Color(0xFFF57C00),
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const CommunityScreen())),
       ),
       _Feature(
         title: 'Diet Tips',
@@ -671,28 +736,10 @@ Widget _buildFeatureGrid(BuildContext context) {
             MaterialPageRoute(
                 builder: (context) => const ExerciseSuggestionsScreen())),
       ),
-      _Feature(
-        title: 'Articles',
-        icon: Icons.newspaper_outlined,
- subtitle: 'Ask our AI health assistant',
-        backgroundColor: const Color(0xFFEDE7F6),
-        iconColor: const Color(0xFF5E35B1),
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (context) => const ArticleListScreen())),
-      ),
-            _Feature(
-        title: 'mental health',
-        icon: Icons.psychology,
- subtitle: 'Ask our AI health assistant',
-        backgroundColor: const Color(0xFFEDE7F6),
-        iconColor: const Color(0xFF5E35B1),
-        onTap: () => Navigator.push(context,
-            MaterialPageRoute(builder: (context) => AddEditLogScreen(date: DateTime.now()))),
-      ),
                   _Feature(
         title: 'Log',
         icon: Icons.history,
- subtitle: 'Ask our AI health assistant',
+ subtitle: 'mental health log',
         backgroundColor: const Color(0xFFEDE7F6),
         iconColor: const Color(0xFF5E35B1),
         onTap: () => Navigator.push(context,

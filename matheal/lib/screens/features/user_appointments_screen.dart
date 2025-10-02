@@ -142,7 +142,7 @@ class _UserAppointmentsScreenState extends State<UserAppointmentsScreen>
           builder: (context, docSnap) {
             if (!docSnap.hasData) {
               // Show a placeholder while the doctor's details are loading
-              return const SizedBox(height: 120, child: Center(child: CircularProgressIndicator()));
+              return const SizedBox(height: 140, child: Center(child: CircularProgressIndicator()));
             }
             final doctor = docSnap.data!;
             

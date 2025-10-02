@@ -1,11 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:intl/intl.dart';
 import '../../models/user_model.dart';
-import '../../models/appointment_model.dart';
 import '../../services/firestore_service.dart';
-import '../../services/notification_service.dart';
-import '../../services/appointment_service.dart';
 import 'doctor/doctor_detail_screen.dart'; // Import the new doctor detail screen
 
 class BookAppointmentScreen extends StatefulWidget {
@@ -16,8 +11,6 @@ class BookAppointmentScreen extends StatefulWidget {
 }
 
 class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
-  final AppointmentService _appointmentService = AppointmentService();
-  DateTime? _selectedDateTime;
   final _notesController = TextEditingController();
   final _searchController = TextEditingController();
 
@@ -42,54 +35,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     super.dispose();
   }
 
-  Future<void> _pickDateTimeAndBook(UserModel doctor) async {
-    final now = DateTime.now();
-    final date = await showDatePicker(context: context, initialDate: now, firstDate: now, lastDate: now.add(const Duration(days: 365)));
-    if (date == null) return;
-    final time = await showTimePicker(context: context, initialTime: TimeOfDay.fromDateTime(now));
-    if (time == null) return;
 
-    setState(() => _selectedDateTime = DateTime(date.year, date.month, date.day, time.hour, time.minute));
-
-    if (!mounted) return;
-    final confirmed = await showModalBottomSheet<bool>(
-      context: context,
-      isScrollControlled: true,
-      builder: (ctx) => _buildConfirmationSheet(doctor),
-    );
-
-    if (confirmed == true) {
-      await _bookAppointment(doctor);
-    }
-  }
-
-  Future<void> _bookAppointment(UserModel doctor) async {
-    if (_selectedDateTime == null) return;
-    final userId = FirebaseAuth.instance.currentUser!.uid;
-
-    final appointment = Appointment(
-      id: '', // Firestore will generate this
-      userId: userId,
-      doctorId: doctor.uid,
-      dateTime: _selectedDateTime!,
-      status: "pending",
-      notes: _notesController.text,
-    );
-
-    await _appointmentService.createAppointment(appointment);
-
-    await NotificationService.scheduleAppointment(
-      id: UniqueKey().hashCode,
-      title: "Appointment Reminder",
-      body: "Your appointment with Dr. ${doctor.name} is tomorrow.",
-      scheduledDate: _selectedDateTime!.subtract(const Duration(days: 1)),
-    );
-
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Appointment requested successfully!")));
-      Navigator.of(context).pop();
-    }
-  }
 
   void _viewDoctorDetails(UserModel doctor) {
     Navigator.push(
@@ -126,7 +72,7 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
             itemBuilder: (context) => [
               const PopupMenuItem(value: "All", child: Text("All Doctors")),
               const PopupMenuDivider(),
-              const PopupMenuItem(value: "Spec:Psychologist", child: Text("Psychologist")),
+              const PopupMenuItem(value: "Spec:Gynecologist", child: Text("Gynecologist")),
               const PopupMenuItem(value: "Spec:Medicine", child: Text("Medicine")),
               const PopupMenuItem(value: "Spec:Orthopedic", child: Text("Orthopedic")),
               const PopupMenuDivider(),
@@ -176,7 +122,10 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
                   doctors = doctors.where((d) {
                     final name = d.name.toLowerCase();
                     final spec = (d.specialization ?? "").toLowerCase();
-                    return name.contains(_searchQuery) || spec.contains(_searchQuery);
+                    final hospital = (d.hospitalName ?? "").toLowerCase();
+
+
+                    return name.contains(_searchQuery) || spec.contains(_searchQuery) || hospital.contains(_searchQuery);
                   }).toList();
                 }
 
@@ -200,210 +149,124 @@ class _BookAppointmentScreenState extends State<BookAppointmentScreen> {
     );
   }
 
-  Widget _buildDoctorCard(UserModel doctor) {
-    return Container(
-      height: 140,
-      margin: const EdgeInsets.symmetric(vertical: 8),
-      child: Card(
-        elevation: 4,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Container(
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Color.fromARGB(255, 84, 151, 218), Color.fromARGB(255, 45, 150, 255)],
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
+Widget _buildDoctorCard(UserModel doctor) {
+    // Wrap the entire Container with a GestureDetector
+    return GestureDetector(
+      // Set the onTap callback to call your function
+      onTap: () => _viewDoctorDetails(doctor),
+      child: Container(
+        height: 140,
+        margin: const EdgeInsets.symmetric(vertical: 8),
+        child: Card(
+          elevation: 4,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+          clipBehavior: Clip.antiAlias,
+          child: Stack(
+            children: [
+              Container(
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Color.fromARGB(255, 84, 151, 218), Color.fromARGB(255, 45, 150, 255)],
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                  ),
                 ),
               ),
-            ),
-            Positioned(
-              right: 0,
-              bottom: 0,
-              top: 0,
-              child: ClipRRect(
-                borderRadius: const BorderRadius.only(
-                  topRight: Radius.circular(20), 
-                  bottomRight: Radius.circular(20)
-                ),
-                child: doctor.avatarUrl != null
-                    ? Image.network(
-                        doctor.avatarUrl!, 
-                        width: 110, 
-                        fit: BoxFit.cover, 
-                        errorBuilder: (_, __, ___) => const Icon(
-                          Icons.person, 
-                          size: 80, 
-                          color: Colors.white54
+              Positioned(
+                right: 0,
+                bottom: 0,
+                top: 0,
+                child: ClipRRect(
+                  borderRadius: const BorderRadius.only(
+                    topRight: Radius.circular(20), 
+                    bottomRight: Radius.circular(20)
+                  ),
+                  child: doctor.avatarUrl != null
+                      ? Image.network(
+                          doctor.avatarUrl!, 
+                          width: 110, 
+                          fit: BoxFit.cover, 
+                          errorBuilder: (_, __, ___) => const Icon(
+                            Icons.person, 
+                            size: 80, 
+                            color: Colors.white54
+                          )
                         )
-                      )
-                    : const SizedBox(
-                        width: 110, 
-                        child: Icon(
-                          Icons.medical_services_outlined, 
-                          size: 80, 
-                          color: Colors.white54
-                        )
-                      ),
-              ),
-            ),
-            Positioned.fill(
-              right: 110,
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      "Dr. ${doctor.name}", 
-                      style: const TextStyle(
-                        color: Colors.white, 
-                        fontWeight: FontWeight.bold, 
-                        fontSize: 18
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      doctor.specialization ?? "Specialist", 
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.8), 
-                        fontSize: 14
-                      )
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      doctor.hospitalName ?? "Clinic", 
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6), 
-                        fontSize: 12
-                      ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    const SizedBox(height: 8),
-                    // Rating display
-                    Row(
-                      children: [
-                        Icon(
-                          Icons.star, 
-                          color: Colors.amber, 
-                          size: 16
+                      : const SizedBox(
+                          width: 110, 
+                          child: Icon(
+                            Icons.medical_services_outlined, 
+                            size: 80, 
+                            color: Colors.white54
+                          )
                         ),
-                        const SizedBox(width: 4),
-                        Text(
-                          "${doctor.averageRating.toStringAsFixed(1)} (${doctor.totalReviews})",
-                          style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
                 ),
               ),
-            ),
-            // Action buttons
-            Positioned(
-              bottom: 8,
-              right: 120,
-              child: Row(
-                children: [
-                  // View Details button
-                  GestureDetector(
-                    onTap: () => _viewDoctorDetails(doctor),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white.withOpacity(0.2),
-                        borderRadius: BorderRadius.circular(12),
+              Positioned.fill(
+                right: 110,
+                child: Padding(
+                  padding: const EdgeInsets.all(16.0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text(
+                        "Dr. ${doctor.name}", 
+                        style: const TextStyle(
+                          color: Colors.white, 
+                          fontWeight: FontWeight.bold, 
+                          fontSize: 18
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
+                      const SizedBox(height: 4),
+                      Text(
+                        doctor.specialization ?? "Specialist", 
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.8), 
+                          fontSize: 14
+                        )
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        doctor.hospitalName ?? "Clinic", 
+                        style: TextStyle(
+                          color: Colors.white.withOpacity(0.6), 
+                          fontSize: 12
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                      const SizedBox(height: 8),
+                      // Rating display
+                      Row(
                         children: [
-                          Icon(
-                            Icons.info_outline, 
-                            color: Colors.white.withOpacity(0.8), 
-                            size: 14
+                          const Icon(
+                            Icons.star, 
+                            color: Colors.amber, 
+                            size: 16
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            "Details",
+                            "${doctor.averageRating.toStringAsFixed(1)} (${doctor.totalReviews})",
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.8),
-                              fontSize: 11,
+                              fontSize: 12,
                             ),
                           ),
                         ],
                       ),
-                    ),
+                    ],
                   ),
-                  const SizedBox(width: 8),
-                  // Book appointment button
-                  GestureDetector(
-                    onTap: () => _pickDateTimeAndBook(doctor),
-                    child: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: const Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.calendar_month, 
-                            color: Color(0xFF2C3E50), 
-                            size: 14
-                          ),
-                          SizedBox(width: 4),
-                          Text(
-                            "Book",
-                            style: TextStyle(
-                              color: Color(0xFF2C3E50),
-                              fontSize: 11,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
-            )
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _buildConfirmationSheet(UserModel doctor) {
-    return Padding(
-      padding: EdgeInsets.fromLTRB(16, 16, 16, MediaQuery.of(context).viewInsets.bottom + 16),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text("Confirm Appointment", style: Theme.of(context).textTheme.titleLarge),
-          const SizedBox(height: 12),
-          Text("Request an appointment with Dr. ${doctor.name} for ${DateFormat('dd MMM yyyy, hh:mm a').format(_selectedDateTime!)}?"),
-          const SizedBox(height: 16),
-          TextField(controller: _notesController, decoration: const InputDecoration(labelText: "Notes (optional)")),
-          const SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(child: OutlinedButton(onPressed: () => Navigator.pop(context, false), child: const Text("Cancel"))),
-              const SizedBox(width: 12),
-              Expanded(child: ElevatedButton(onPressed: () => Navigator.pop(context, true), child: const Text("Confirm Request"))),
-            ],
-          )
-        ],
-      ),
-    );
-  }
+
 }

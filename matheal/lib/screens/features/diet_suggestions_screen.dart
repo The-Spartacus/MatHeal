@@ -55,7 +55,7 @@ class _DietSuggestionsScreenState extends State<DietSuggestionsScreen> {
 
       final prompt = """
         As a maternal health and nutrition expert, create a one-day sample diet plan for a user with the following details:
-        - Weeks Pregnant: ${profile.weeksPregnant ?? 'Not specified'}
+        - Weeks Pregnant: ${profile.currentWeeksPregnant ?? 'Not specified'}
         - Existing Health Conditions: ${profile.conditions.isNotEmpty ? profile.conditions.join(', ') : 'None specified'}
 
         Generate the response ONLY in Markdown format.

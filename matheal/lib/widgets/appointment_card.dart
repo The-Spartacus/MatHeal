@@ -28,7 +28,7 @@ class AppointmentCard extends StatelessWidget {
         : (status == 'cancelled' ? AppColors.error : Colors.orange);
 
     return Container(
-      height: 120,
+      height: 140,
       margin: const EdgeInsets.symmetric(vertical: 8),
       child: Stack(
         children: [
@@ -40,7 +40,7 @@ class AppointmentCard extends StatelessWidget {
             child: Container(
               decoration: const BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Color(0xFF2C3E50), Color(0xFF1B2631)],
+                  colors: [Color.fromARGB(255, 84, 151, 218), Color.fromARGB(255, 45, 150, 255)],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
@@ -50,22 +50,25 @@ class AppointmentCard extends StatelessWidget {
           // Image
           Positioned(
             right: 0,
-            bottom: 0,
-            top: 0,
+            bottom: 3,
+            top: 4,
             child: ClipRRect(
               borderRadius: const BorderRadius.only(
                 topRight: Radius.circular(20),
                 bottomRight: Radius.circular(20),
+                
               ),
               child: participant.avatarUrl != null
                   ? Image.network(
                       participant.avatarUrl!,
+                      height: 80,
                       width: 110,
                       fit: BoxFit.cover,
-                      errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 80, color: Colors.white54),
+                      errorBuilder: (_, __, ___) => const Icon(Icons.person, size: 60, color: Colors.white54),
                     )
                   : SizedBox(
                       width: 110,
+                      height: 80,
                       child: Icon(isDoctorView ? Icons.person_outline : Icons.medical_services_outlined, size: 80, color: Colors.white54),
                     ),
             ),
@@ -78,6 +81,9 @@ class AppointmentCard extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                      const SizedBox(height: 22),
+
+
                   Row(
                     children: [
                       const Icon(Icons.calendar_today, color: Colors.white70, size: 14),

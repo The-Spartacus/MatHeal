@@ -192,26 +192,39 @@ class DoctorRating {
 
 
 /// ---------------- USER PROFILE ----------------
+
 class UserProfile {
   final String uid;
   final int? age;
-  final int? weeksPregnant;
+  final int? anchorWeek;      
+  final DateTime? anchorDate; 
   final List<String> conditions;
   final String? avatarUrl;
 
   UserProfile({
     required this.uid,
     this.age,
-    this.weeksPregnant,
+    this.anchorWeek,    
+    this.anchorDate,    
     this.conditions = const [],
     this.avatarUrl,
   });
+
+  int? get currentWeeksPregnant {
+    if (anchorWeek == null || anchorDate == null) {
+      return null;
+    }
+    final daysSinceAnchor = DateTime.now().difference(anchorDate!).inDays;
+    final weeksSinceAnchor = daysSinceAnchor ~/ 7; 
+    return anchorWeek! + weeksSinceAnchor;
+  }
 
   factory UserProfile.fromFirestore(Map<String, dynamic> data) {
     return UserProfile(
       uid: data['uid'] ?? '',
       age: data['age'],
-      weeksPregnant: data['weeksPregnant'],
+      anchorWeek: data['anchorWeek'],
+      anchorDate: (data['anchorDate'] as Timestamp?)?.toDate(),
       conditions: List<String>.from(data['conditions'] ?? []),
       avatarUrl: data['avatarUrl'],
     );
@@ -221,7 +234,8 @@ class UserProfile {
     return {
       'uid': uid,
       'age': age,
-      'weeksPregnant': weeksPregnant,
+      'anchorWeek': anchorWeek,
+      'anchorDate': anchorDate,
       'conditions': conditions,
       'avatarUrl': avatarUrl,
     };
@@ -230,14 +244,16 @@ class UserProfile {
   UserProfile copyWith({
     String? uid,
     int? age,
-    int? weeksPregnant,
+    int? anchorWeek,
+    DateTime? anchorDate,
     List<String>? conditions,
     String? avatarUrl,
   }) {
     return UserProfile(
       uid: uid ?? this.uid,
       age: age ?? this.age,
-      weeksPregnant: weeksPregnant ?? this.weeksPregnant,
+      anchorWeek: anchorWeek ?? this.anchorWeek,
+      anchorDate: anchorDate ?? this.anchorDate,
       conditions: conditions ?? this.conditions,
       avatarUrl: avatarUrl ?? this.avatarUrl,
     );

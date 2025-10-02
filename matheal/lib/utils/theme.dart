@@ -37,7 +37,9 @@ class AppTheme {
       background: AppColors.background,
       error: AppColors.error,
     ),
-    textTheme: GoogleFonts.poppinsTextTheme(),
+    textTheme: GoogleFonts.openSansTextTheme(
+    ),
+
     appBarTheme: const AppBarTheme(
       backgroundColor: AppColors.background,
       foregroundColor: Color.fromARGB(255, 14, 13, 13),

@@ -86,6 +86,7 @@ flutter:
     - family: Bricolage_Grotesque
       fonts:
         - asset: assets/fonts/BricolageGrotesque-VariableFont_opsz,wdth,wght.ttf
+        - asset: assets/fonts/BricolageGrotesque-Medium.ttf
     - family: Orbitron
       fonts:
         - asset: assets/fonts/Orbitron-VariableFont_wght.ttf

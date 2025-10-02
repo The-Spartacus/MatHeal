@@ -28,8 +28,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   DateTime _selectedDate = DateTime.now();
   String? _selectedTimeSlot;
 
-  // --- ALL YOUR EXISTING LOGIC METHODS ARE PRESERVED ---
-
   Future<void> _bookAppointment() async {
     if (_selectedTimeSlot == null) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -39,22 +37,21 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
 
     final userId = FirebaseAuth.instance.currentUser!.uid;
 
-    // Combine selected date and time
-    final timeParts = _selectedTimeSlot!.split(RegExp(r'[:\s]')); // Handles "10:00 AM"
+    final timeParts = _selectedTimeSlot!.split(RegExp(r'[:\s]'));
     int hour = int.parse(timeParts[0]);
     final int minute = int.parse(timeParts[1]);
     if (timeParts.last.toUpperCase() == 'PM' && hour != 12) {
       hour += 12;
     }
     if (timeParts.last.toUpperCase() == 'AM' && hour == 12) {
-      hour = 0; // Midnight case
+      hour = 0;
     }
 
     final finalDateTime = DateTime(_selectedDate.year, _selectedDate.month,
         _selectedDate.day, hour, minute);
 
     final appointment = Appointment(
-      id: '', // Firestore will generate this
+      id: '',
       userId: userId,
       doctorId: widget.doctor.uid,
       dateTime: finalDateTime,
@@ -64,7 +61,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
 
     await _appointmentService.createAppointment(appointment);
 
-    // Schedule a reminder for the day before
     await NotificationService.scheduleAppointment(
       id: UniqueKey().hashCode,
       title: "Appointment Reminder",
@@ -110,7 +106,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                 Expanded(
                     child: ElevatedButton(
                         onPressed: () {
-                          Navigator.pop(context); // Close the sheet first
+                          Navigator.pop(context);
                           _bookAppointment();
                         },
                         child: const Text("Confirm Request"))),
@@ -123,7 +119,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   }
 
   void _showRatingDialog(BuildContext context, DoctorRating? existingRating) {
-    // This method's internal logic is completely unchanged.
     double ratingValue = existingRating?.rating ?? 3.0;
     final commentController =
         TextEditingController(text: existingRating?.comment ?? '');
@@ -200,6 +195,21 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     );
   }
 
+  // +++ NEW HELPER WIDGET TO GENERATE TIME SLOTS +++
+  List<String> _generateTimeSlots(Map<String, bool> availableTimings) {
+    final List<String> slots = [];
+    if (availableTimings['morning'] == true) {
+      slots.addAll(['09:00 AM', '10:00 AM', '11:00 AM']);
+    }
+    if (availableTimings['afternoon'] == true) {
+      slots.addAll(['02:00 PM', '03:00 PM', '04:00 PM']);
+    }
+    if (availableTimings['evening'] == true) {
+      slots.addAll(['06:00 PM', '07:00 PM']);
+    }
+    return slots;
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -221,8 +231,7 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
                       _buildAvailableSlotsSection(),
                       const SizedBox(height: 24),
                       _buildReviewsSection(),
-                      const SizedBox(
-                          height: 100), // Space for the floating button
+                      const SizedBox(height: 100),
                     ],
                   ),
                 ),
@@ -235,8 +244,6 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     );
   }
   
-  // --- UI HELPER WIDGETS ---
-
   Widget _buildSliverAppBar() {
     final profile = widget.doctor.doctorProfile;
     return SliverAppBar(
@@ -336,22 +343,63 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
     );
   }
   
+  Widget _buildDetailRow({required IconData icon, required String title, required String subtitle}) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
+      child: Row(
+        children: [
+          Icon(icon, color: AppColors.primary, size: 24),
+          const SizedBox(width: 16),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+              const SizedBox(height: 2),
+              Text(subtitle, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16)),
+            ],
+          )
+        ],
+      ),
+    );
+  }
+
+  // +++ UPDATED DETAILS SECTION +++
   Widget _buildDetailsSection() {
     final profile = widget.doctor.doctorProfile;
+    if (profile == null) return const SizedBox.shrink();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text(
-          "Details",
-          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        Text(
+          "About Dr. ${widget.doctor.name}",
+          style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 8),
         Text(
-          profile?.bio ?? "No bio available.",
-          maxLines: 3,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(color: Colors.grey.shade600, height: 1.5),
+          profile.bio ?? "No bio available.",
+          style: TextStyle(color: Colors.grey.shade700, height: 1.5),
         ),
+        const Divider(height: 32),
+        // Display other details only if they exist
+        if (profile.yearsOfExperience != null && profile.yearsOfExperience! > 0)
+          _buildDetailRow(
+            icon: Icons.work_history_outlined,
+            title: "Experience",
+            subtitle: "${profile.yearsOfExperience} years",
+          ),
+        if (profile.hospitalName.isNotEmpty)
+          _buildDetailRow(
+            icon: Icons.local_hospital_outlined,
+            title: "Works At",
+            subtitle: profile.hospitalName,
+          ),
+        if (profile.qualifications != null && profile.qualifications!.isNotEmpty)
+          _buildDetailRow(
+            icon: Icons.school_outlined,
+            title: "Qualifications",
+            subtitle: profile.qualifications!,
+          ),
       ],
     );
   }
@@ -375,7 +423,10 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
               final date = DateTime.now().add(Duration(days: index));
               final isSelected = date.day == _selectedDate.day && date.month == _selectedDate.month;
               return GestureDetector(
-                onTap: () => setState(() => _selectedDate = date),
+                onTap: () => setState(() {
+                  _selectedDate = date;
+                  _selectedTimeSlot = null; // Reset time slot when date changes
+                }),
                 child: Container(
                   width: 50,
                   decoration: BoxDecoration(
@@ -412,7 +463,9 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
   }
 
   Widget _buildAvailableSlotsSection() {
-    final availableSlots = ['10:00 AM', '11:00 AM', '01:00 PM', '02:00 PM', '04:00 PM'];
+    // Use the new helper to dynamically get time slots
+    final timings = widget.doctor.doctorProfile?.availableTimings ?? {};
+    final availableSlots = _generateTimeSlots(timings);
     
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -422,34 +475,40 @@ class _DoctorDetailScreenState extends State<DoctorDetailScreen> {
           style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
         ),
         const SizedBox(height: 12),
-        Wrap(
-          spacing: 12.0,
-          runSpacing: 12.0,
-          children: availableSlots.map((slot) {
-            final isSelected = _selectedTimeSlot == slot;
-            return ChoiceChip(
-              label: Text(slot),
-              selected: isSelected,
-              onSelected: (selected) {
-                setState(() {
-                  _selectedTimeSlot = selected ? slot : null;
-                });
-              },
-              backgroundColor: Colors.grey.shade100,
-              selectedColor: AppColors.primary.withOpacity(0.2),
-              labelStyle: TextStyle(
-                color: isSelected ? AppColors.primary : Colors.black,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(8),
-                side: BorderSide(
-                  color: isSelected ? AppColors.primary : Colors.grey.shade300,
+        if (availableSlots.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(8.0),
+            child: Text("No available slots for this day."),
+          )
+        else
+          Wrap(
+            spacing: 12.0,
+            runSpacing: 12.0,
+            children: availableSlots.map((slot) {
+              final isSelected = _selectedTimeSlot == slot;
+              return ChoiceChip(
+                label: Text(slot),
+                selected: isSelected,
+                onSelected: (selected) {
+                  setState(() {
+                    _selectedTimeSlot = selected ? slot : null;
+                  });
+                },
+                backgroundColor: Colors.grey.shade100,
+                selectedColor: AppColors.primary.withOpacity(0.2),
+                labelStyle: TextStyle(
+                  color: isSelected ? AppColors.primary : Colors.black,
+                  fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
                 ),
-              ),
-            );
-          }).toList(),
-        ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  side: BorderSide(
+                    color: isSelected ? AppColors.primary : Colors.grey.shade300,
+                  ),
+                ),
+              );
+            }).toList(),
+          ),
       ],
     );
   }
