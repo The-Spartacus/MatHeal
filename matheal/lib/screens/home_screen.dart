@@ -697,10 +697,10 @@ Widget _buildFeatureGrid(BuildContext context) {
     final features = [
             _Feature(
         title: 'Risk Predictor',
-        icon: Icons.connect_without_contact_outlined,
+        icon: Icons.warning_amber_outlined,
  subtitle: 'Predict pregnancy risk',
         backgroundColor: const Color(0xFFFFF3E0),
-        iconColor: const Color(0xFFF57C00),
+        iconColor: const Color.fromARGB(255, 245, 0, 0),
         onTap: () => Navigator.push(context,
             MaterialPageRoute(builder: (context) => const HealthRiskPredictor())),
       ),
